@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "HealthPing": {
+      "description": "Client -> server. `client_sent_ms` is the client's clock, echoed back.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "health.ping",
+          "default": "health.ping",
+          "type": "string"
+        },
+        "client_sent_ms": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "client_sent_ms"
+      ],
+      "title": "HealthPing",
+      "type": "object"
+    },
+    "HealthPong": {
+      "description": "Server -> client reply to a ping; the client computes round-trip time.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "health.pong",
+          "default": "health.pong",
+          "type": "string"
+        },
+        "client_sent_ms": {
+          "type": "number"
+        },
+        "server_ms": {
+          "description": "Server time spent handling the ping, in ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "client_sent_ms",
+        "server_ms"
+      ],
+      "title": "HealthPong",
+      "type": "object"
+    },
+    "HealthStatus": {
+      "description": "Server -> client, sent once when the health socket opens.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "health.status",
+          "default": "health.status",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "services": {
+          "$ref": "#/$defs/ServiceStatus"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "version",
+        "services"
+      ],
+      "title": "HealthStatus",
+      "type": "object"
+    },
+    "ServiceStatus": {
+      "description": "Whether each external service has a key configured. Never carries the key.",
+      "properties": {
+        "transcription": {
+          "type": "boolean"
+        },
+        "llm": {
+          "type": "boolean"
+        },
+        "market_data": {
+          "type": "boolean"
+        },
+        "email": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "transcription",
+        "llm",
+        "market_data",
+        "email"
+      ],
+      "title": "ServiceStatus",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "health.ping": "#/$defs/HealthPing",
+      "health.pong": "#/$defs/HealthPong",
+      "health.status": "#/$defs/HealthStatus"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/HealthStatus"
+    },
+    {
+      "$ref": "#/$defs/HealthPing"
+    },
+    {
+      "$ref": "#/$defs/HealthPong"
+    }
+  ],
+  "title": "TenorEvent"
+}

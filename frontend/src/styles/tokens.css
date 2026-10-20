@@ -1,0 +1,19 @@
+:root {
+  --bg: #EEF0EC; --surface: #FFFFFF; --sunk: #F6F7F4;
+  --ink: #14181E; --muted: #5C6470; --line: #D9DDD6;
+  --accent: #2E47B0;
+  --danger: #B3261E; --warn: #A35F00; --ok: #1E7349;
+  --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-card: 14px; --radius-control: 9px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1216; --surface: #171B21; --sunk: #12161B;
+    --ink: #E6E9ED; --muted: #99A1AB; --line: #2A3038;
+    --accent: #93A6FF;
+    --danger: #FF7B71; --warn: #F2AC45; --ok: #62CC95;
+  }
+}
