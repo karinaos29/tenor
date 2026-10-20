@@ -4,7 +4,7 @@
 > - **LLM:** Google Gemini via a Google AI Studio key, not Claude (`gemini-3.5-flash-lite` for extraction, `gemini-3.8-flash` for research and the memo; see [`../ai.md`](../ai.md)).
 > - **Visual language:** a dark theme inspired by Hiya's brand (deep indigo, one violet accent, purple→cyan gradient for brand moments only). The rules below still apply: one accent, severity always with a text label, motion only for news. Tokens: `.claude/skills/tenor-ui/SKILL.md`.
 > - **M1 pulled forward** the event bus and a minimal replay source (both listed under M2), so components use the bus from day 1 and every milestone demo works on replay.
-> - **Speaker labels:** the labeler (not the transcriber) publishes `utterance.partial/final`, because the labels belong to it. `speakers.updated` carries a *list* of user speakers, because diarization can split one voice into two speaker numbers.
+> - **Speaker labels:** the labeler (not the transcriber) publishes `utterance.partial/final`, because the labels belong to it. `speakers.updated` carries a *list* of user speakers, because diarization can split one voice into two speaker numbers. It can also merge two similar voices into one; the labeler then splits that speaker by loudness into a second voice numbered 100 + n, so `speaker_index` is a voice number.
 
 
 Oct 19, 2026

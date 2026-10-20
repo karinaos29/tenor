@@ -448,7 +448,7 @@
       "type": "object"
     },
     "SpeakersUpdated": {
-      "description": "Which diarized speakers are the user (diarization can split one voice in two).\nEveryone else is the caller.",
+      "description": "Which voices (`Utterance.speaker_index`) are the user. A list, because diarization\ncan split one voice in two. Everyone else is the caller.",
       "properties": {
         "ts": {
           "format": "date-time",
@@ -641,7 +641,7 @@
           "type": "string"
         },
         "speaker_index": {
-          "description": "Diarized speaker number from speech-to-text",
+          "description": "Voice number: the diarized speaker from speech-to-text, or 100 + n for a second voice the labeler found inside speaker n by loudness",
           "type": "integer"
         },
         "text": {

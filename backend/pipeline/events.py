@@ -77,7 +77,10 @@ class Utterance(BaseModel):
 
     id: str
     speaker: Role = Field(description="Role when the utterance was emitted; the UI relabels from speakers.updated")
-    speaker_index: int = Field(description="Diarized speaker number from speech-to-text")
+    speaker_index: int = Field(
+        description="Voice number: the diarized speaker from speech-to-text, or 100 + n for a second voice"
+        " the labeler found inside speaker n by loudness"
+    )
     text: str
     t_start: float
     t_end: float
@@ -124,8 +127,8 @@ class UtteranceFinal(Event):
 
 
 class SpeakersUpdated(Event):
-    """Which diarized speakers are the user (diarization can split one voice in two).
-    Everyone else is the caller."""
+    """Which voices (`Utterance.speaker_index`) are the user. A list, because diarization
+    can split one voice in two. Everyone else is the caller."""
 
     type: Literal["speakers.updated"] = "speakers.updated"
     user_indices: list[int]

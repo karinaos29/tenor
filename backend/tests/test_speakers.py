@@ -206,6 +206,146 @@ def test_new_speaker_after_lock_classified_against_hand_labels_user_quieter():
     assert ups[-1].user_indices == [1, 2]
 
 
+# --- merged voices: both people on one diarized speaker -------------------------------
+
+
+def hello(h) -> None:
+    """The user answers with one loud word, like the real replays ("Hello?" is 0.4 s)."""
+    h.levels(0.0, 0.4, -20)
+    h.levels(0.4, 1.0, -60)
+    h.segment([("Hello?", 0.0, 0.4, 0)], True, True)
+    h.t = 1.0
+
+
+def shown(events) -> list[str]:
+    """Roles as the UI shows them at the end: by speaker_index in the last user_indices."""
+    user = updates(events)[-1].user_indices
+    return ["user" if u.speaker_index in user else "caller" for u in finals(events)]
+
+
+def test_merged_voices_split_by_loudness_from_the_callers_first_line():
+    # Diarization puts both people on speaker 0; the caller's phone is 8 dB quieter.
+    def scenario(h):
+        hello(h)
+        h.speak(0, -28, 4.8)  # the caller introduces themself
+        h.speak(0, -20)
+        h.speak(0, -28)
+        h.speak(0, -20)
+
+    events = run(scenario)
+    f = finals(events)
+    # Labeled right when sent, so the extractor and the offer see the caller's words.
+    assert [(u.speaker, u.speaker_index) for u in f] == [
+        ("user", 0),
+        ("caller", 100),
+        ("user", 0),
+        ("caller", 100),
+        ("user", 0),
+    ]
+    assert [(u.user_indices, u.reason) for u in updates(events)] == [([0], "first_turn")]
+
+
+def test_merged_voices_caller_first_relabels_their_opening_line():
+    def scenario(h):
+        h.speak(0, -28, 4.8)  # the caller speaks first: provisionally "You"
+        h.speak(0, -20)
+        h.speak(0, -28)
+
+    events = run(scenario)
+    assert [(u.user_indices, u.reason) for u in updates(events)] == [([0], "first_turn"), ([100], "loudness")]
+    assert [(u.speaker, u.speaker_index) for u in finals(events)] == [("user", 0), ("user", 100), ("caller", 0)]
+    assert shown(events) == ["caller", "user", "caller"]  # the opening line keeps index 0 and flips
+
+
+def test_after_a_split_a_turn_change_inside_one_segment_starts_a_new_line():
+    def scenario(h):
+        hello(h)
+        h.speak(0, -28, 4.8)
+        # One final segment: the caller, a pause, then the user. Deepgram marks no change.
+        t = h.t
+        h.levels(t, t + 1.2, -28)
+        h.levels(t + 1.2, t + 1.6, -60)
+        h.levels(t + 1.6, t + 2.8, -20)
+        words = [(f"c{i}", t + 0.3 * i, t + 0.3 * (i + 1), 0) for i in range(4)]
+        words += [(f"u{i}", t + 1.6 + 0.3 * i, t + 1.6 + 0.3 * (i + 1), 0) for i in range(4)]
+        h.segment(words, True, True)
+
+    f = finals(run(scenario))
+    assert [(u.speaker, u.speaker_index, u.text) for u in f[2:]] == [
+        ("caller", 100, "c0 c1 c2 c3"),
+        ("user", 0, "u0 u1 u2 u3"),
+    ]
+    assert f[2].id != f[3].id
+
+
+def test_partials_after_a_split_carry_the_nearer_voice():
+    def scenario(h):
+        hello(h)
+        h.speak(0, -28, 4.8)
+        t = h.t
+        h.levels(t, t + 0.6, -28)
+        h.segment([("so", t, t + 0.3, 0), ("then", t + 0.3, t + 0.6, 0)], False, False)
+
+    p = partials(run(scenario))
+    assert (p[-1].speaker_index, p[-1].speaker) == (100, "caller")
+
+
+def test_one_voice_with_uneven_loudness_is_not_split():
+    def scenario(h):
+        for dbfs in (-20, -25, -20, -25, -21, -24):  # 5 dB apart: less than SPLIT_DB
+            h.speak(0, dbfs)
+
+    events = run(scenario)
+    assert {u.speaker_index for u in finals(events)} == {0}
+    assert len(updates(events)) == 1
+
+
+def test_no_split_when_both_groups_land_on_the_same_side():
+    # Diarization works, and the caller's phone gets quieter for a while: still one caller.
+    def scenario(h):
+        h.speak(0, -20)
+        h.speak(1, -28)
+        h.speak(0, -20)
+        h.speak(1, -35)
+        h.speak(1, -35)
+
+    events = run(scenario)
+    assert [(u.speaker, u.speaker_index) for u in finals(events)] == [
+        ("user", 0),
+        ("caller", 1),
+        ("user", 0),
+        ("caller", 1),
+        ("caller", 1),
+    ]
+    assert len(updates(events)) == 1
+
+
+def test_swap_after_a_split_inverts_both_voices_and_locks():
+    def scenario(h):
+        hello(h)
+        h.speak(0, -28, 4.8)  # split: 0 = user, 100 = caller
+        h.swap()
+        h.speak(0, -20)  # still routed by loudness; the labels are the user's
+        h.speak(0, -28)
+
+    events = run(scenario)
+    ups = updates(events)
+    assert (ups[-1].user_indices, ups[-1].reason, ups[-1].locked) == ([100], "manual", True)
+    assert [(u.speaker, u.speaker_index) for u in finals(events)[-2:]] == [("caller", 0), ("user", 100)]
+
+
+def test_no_new_split_after_a_manual_swap():
+    def scenario(h):
+        hello(h)
+        h.swap()  # the user said who is who
+        h.speak(0, -28, 4.8)
+        h.speak(0, -20)
+
+    events = run(scenario)
+    assert {u.speaker_index for u in finals(events)} == {0}
+    assert [(u.user_indices, u.locked) for u in updates(events)] == [([0], False), ([], True)]
+
+
 # --- smoothing and utterance boundaries -----------------------------------------------
 
 

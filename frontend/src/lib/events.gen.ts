@@ -109,7 +109,7 @@ export interface Utterance {
    */
   speaker: "caller" | "user";
   /**
-   * Diarized speaker number from speech-to-text
+   * Voice number: the diarized speaker from speech-to-text, or 100 + n for a second voice the labeler found inside speaker n by loudness
    */
   speaker_index: number;
   text: string;
@@ -123,8 +123,8 @@ export interface UtteranceFinal {
   utterance: Utterance;
 }
 /**
- * Which diarized speakers are the user (diarization can split one voice in two).
- * Everyone else is the caller.
+ * Which voices (`Utterance.speaker_index`) are the user. A list, because diarization
+ * can split one voice in two. Everyone else is the caller.
  */
 export interface SpeakersUpdated {
   ts: string;
