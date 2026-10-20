@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import InvalidStatus, WebSocketException
 
+from audio.sources import FRAME_SECONDS, frame_dbfs
 from pipeline.bus import EventBus
 from pipeline.events import (
     Event,
@@ -85,6 +86,7 @@ def parse_deepgram_message(msg: dict, offset: float) -> list[Event]:
                 words=words,
                 is_final=bool(msg.get("is_final")),
                 speech_final=speech_final,
+                from_finalize=bool(msg.get("from_finalize")),
                 start=start,
                 end=start + float(msg.get("duration", 0.0)),
             )
@@ -121,6 +123,8 @@ class DeepgramTranscriber:
         max_reconnects: int = 3,
         backoff: tuple[float, ...] = (0.5, 1.0, 2.0),
         flush_timeout: float = 2.0,
+        finalize_after_silence_s: float | None = 0.45,
+        speech_dbfs: float = -45.0,
     ) -> None:
         self.api_key = api_key
         self.url = f"{url}?{urlencode(DEEPGRAM_PARAMS)}"
@@ -129,6 +133,11 @@ class DeepgramTranscriber:
         self.max_reconnects = max_reconnects
         self.backoff = backoff
         self.flush_timeout = flush_timeout
+        # Deepgram sometimes holds a finished sentence until the *other* person has also
+        # finished (one final segment spanning both turns: 3.8 s late on the scam call).
+        # So after this much silence following speech, we ask it to finalize now.
+        self.finalize_after_silence_s = finalize_after_silence_s
+        self.speech_dbfs = speech_dbfs
 
     async def run(self, audio: "asyncio.Queue[AudioItem]", bus: EventBus, ctx: TranscriberContext) -> None:
         try:
@@ -195,6 +204,7 @@ class DeepgramTranscriber:
 
         async def sender() -> Literal["eof"]:
             nonlocal offset, eof_seen
+            heard_speech, silent_s = False, 0.0
             while True:
                 try:
                     item = await asyncio.wait_for(audio.get(), timeout=self.keepalive_every)
@@ -209,6 +219,14 @@ class DeepgramTranscriber:
                 if offset is None:
                     offset = t_call
                 await ws.send(frame)
+                if self.finalize_after_silence_s is not None:
+                    if frame_dbfs(frame) > self.speech_dbfs:
+                        heard_speech, silent_s = True, 0.0
+                    elif heard_speech:
+                        silent_s += FRAME_SECONDS
+                        if silent_s >= self.finalize_after_silence_s:
+                            heard_speech = False  # once per pause
+                            await ws.send(json.dumps({"type": "Finalize"}))
 
         async def receiver() -> None:
             nonlocal got_results

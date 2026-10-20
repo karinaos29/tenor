@@ -61,7 +61,7 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 | Backend test suite for M3 | **Sonnet 5.5** subagent, background | medium | 122.0k tokens, 22 tool calls, ~4 min, 158 new tests. Found a real end-of-call race (a price check could be lost), fixed with an `offer.closed` marker. |
 | Plain-words rewording of research results | **Gemini**, hedged `3.5-flash-lite` + `3.1-flash-lite` | thinking `minimal` | 0.8–1.0 s on real calls. The number guard caught spelled-out numbers ("thirty-eight cents") and a dropped key figure on the first try; both are now rejected. |
 
-**What M3 showed:** measuring the demo metric end to end changed the design. Per stage, everything was fast (checks < 1 ms, providers 0.3 s), but "spoken → flagged" for the key claim was 3.8 s, because extraction waited for the whole turn to end. Sentence-level extraction fixed it. A stage-by-stage view would have hidden this.
+**What M3 showed:** measuring the demo metric end to end changed the design, twice. Per stage everything was fast (checks < 1 ms, providers 0.3 s), but "spoken → flagged" for the key claim was 3.8 s. The first cause was extraction waiting for the whole turn to end, fixed with sentence-level extraction. The second was Deepgram holding the sentence until the reply ended, fixed by sending `Finalize` after a pause. It's now 0.79 s. A shortcut nearly misled me: a 40-second trimmed test file measured 0.94 s only because the file's end forced the flush. Only the full call told the truth.
 
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.

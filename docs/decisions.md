@@ -194,3 +194,18 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 ### 2026-10-21 · M3 · Labeler fix merged before M3
 - **Decision:** `main` fast-forwarded to `labeler/split-merged-voices` (a merged speaker is split by per-utterance loudness).
 - **Why:** Your call. M3's demo depends on which lines count as the caller's.
+
+### 2026-10-21 · M3 · Extract per sentence, not per turn
+- **Decision:** The labeler publishes `utterance.progress` (finalized words of a turn still in progress), and the extractor processes each completed sentence right away; the final utterance only adds what's left. The checker measures `claim.flag_e2e` from the end of the claim's audio.
+- **Why:** Measured end to end, a claim inside a long turn waited for the whole turn to end: 3.8–5.0 s from spoken to flagged, against a 2 s target, while every stage on its own took milliseconds. Per-stage timing hid it.
+- **Alternative:** Shorter endpointing in Deepgram. That splits turns at small pauses and makes labels noisier.
+
+### 2026-10-21 · M3 · `offer.closed` in the end-of-call chain
+- **Decision:** The offer tracker publishes `offer.closed` after its last update, and the checker stops on that, not on `entities.closed`.
+- **Why:** The M3 test suite (written by a second model) found a race: with a burst of final utterances, `entities.closed` reached the checker before the tracker's last `offer.updated`, so a price check could be lost.
+- **Alternative:** A fixed delay before closing. Racy and slower.
+
+### 2026-10-21 · M3 · Ask Deepgram to finalize after a 0.45 s pause
+- **Decision:** The transcriber watches frame loudness. After 0.45 s of silence following speech, it sends Deepgram `{"type":"Finalize"}` once per pause. A result flushed this way (`from_finalize`) finalizes its words but doesn't end the turn.
+- **Why:** On the full scam call, Deepgram returned "…up 40% this quarter." and your reply "40%? That sounds like a lot." as one final segment, 3.8 s after the claim. Even sentence-level extraction couldn't act before that. With Finalize, spoken → flagged dropped to 0.79 s. A first version at 0.3 s that also ended the turn split sentences into fragments ("Most people haven't," / "Yet."), hence 0.45 s and turn-preserving flushes. A 40-second trimmed test file had first suggested 0.94 s; that was an artifact, because the file's end forced the flush.
+- **Alternative:** Lower Deepgram's `endpointing`. It didn't fire on this 0.6 s gap, and shorter endpointing splits turns everywhere.

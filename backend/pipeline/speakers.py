@@ -175,8 +175,8 @@ class SpeakerLabeler:
             if self._words and w.speaker != self._words[-1].speaker:
                 self._finalize()  # speaker changed: close the previous turn
             self._words.append(w)
-        if seg.speech_final:
-            self._finalize()
+        if seg.speech_final and not seg.from_finalize:
+            self._finalize()  # a flush we asked for finalizes words, but doesn't end the turn
         else:
             self._emit_progress()
             self._emit_partial()

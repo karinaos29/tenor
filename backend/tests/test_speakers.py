@@ -464,3 +464,31 @@ def test_empty_speech_final_does_not_emit():
         h.segment([], True, True)
 
     assert run(scenario) == []
+
+
+def test_flush_we_requested_does_not_end_the_turn():
+    """A Finalize-forced result (from_finalize) finalizes words but keeps the turn open,
+    so a sentence with a pause isn't split into separate lines (seen on the scam replay)."""
+    import asyncio
+
+    from pipeline.bus import EventBus
+    from pipeline.events import TranscriptClosed, TranscriptSegment, UtteranceFinal, Word
+    from pipeline.speakers import SpeakerLabeler
+
+    def seg(words, t, **kw):
+        ws = [Word(text=w, start=t + i * 0.3, end=t + i * 0.3 + 0.25, speaker=1, confidence=0.9) for i, w in enumerate(words)]
+        return TranscriptSegment(words=ws, is_final=True, start=t, end=ws[-1].end, **kw)
+
+    async def main():
+        bus = EventBus()
+        out = bus.subscribe(UtteranceFinal)
+        labeler = SpeakerLabeler(bus)
+        task = asyncio.create_task(labeler.run())
+        bus.publish(seg(["Most", "people", "haven't,"], 0.0, speech_final=True, from_finalize=True))
+        bus.publish(seg(["yet."], 1.5, speech_final=True))
+        bus.publish(TranscriptClosed())
+        await task
+        out.close()
+        return [e.utterance.text async for e in out]
+
+    assert asyncio.run(main()) == ["Most people haven't, yet."]

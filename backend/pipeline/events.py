@@ -370,6 +370,7 @@ class TranscriptSegment(Event):
     speech_final: bool
     start: float
     end: float
+    from_finalize: bool = Field(default=False, description="Flushed by our Finalize request, not a real end of speech")
 
 
 class TranscriptUtteranceEnd(Event):

@@ -4,7 +4,7 @@ A live copilot for high-pressure investment sales calls. Put the call on speaker
 
 Prototype for the Hiya Voice AI Challenge. No real telephony: microphone input and recorded-call replay only.
 
-> **Status: M2 (Understand).** Live transcript with "You" and "Caller" labels, plus the offer card (who's calling, what, price, quantity, total, deadline, payment) filling in live, with changed terms marked. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
+> **Status: M3 (Verify).** Live transcript with "You" and "Caller" labels; the offer card fills in as the caller talks; claims are checked against market data ("Doesn't match data", "No evidence found", "Couldn't verify"); the firm is looked up; up to four suggestions (what to say, plus the evidence) and a risk level update live. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Run
 
@@ -53,6 +53,14 @@ Opt-in test against the real Deepgram API (needs `DEEPGRAM_API_KEY`, takes ~40 s
 ```bash
 uv run pytest -m deepgram
 ```
+
+And against the real Finnhub API (needs `FINNHUB_API_KEY`):
+
+```bash
+uv run pytest -m finnhub
+```
+
+Market data: real tickers come from Finnhub's free tier; the fictional company in the scam call (Kestrel Motors, KSTL) uses invented test data in `backend/fixtures/companies/`, and firms are looked up in a test register of fictional firms (`backend/fixtures/register.json`). Without a Finnhub key, checks on real tickers show "Couldn't verify".
 
 After changing an event model in `backend/pipeline/events.py`, regenerate the TypeScript types with `npm run gen:types` (frontend/). A backend test fails until you do.
 
