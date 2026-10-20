@@ -12,7 +12,7 @@ Eszter, 58, retired teacher with savings. Polite, not a finance expert. Design e
 ## Stack
 - Backend: Python 3.12, FastAPI, asyncio, Pydantic v2, uv for dependencies
 - STT: Deepgram streaming (interim results, diarization)
-- LLM: Google Gemini via the `google-genai` SDK and a Google AI Studio key (`gemini-3.5-flash-lite` for extraction, `gemini-3.8-flash` with tool use for research and the memo; see `ai.md`)
+- LLM: Google Gemini via the `google-genai` SDK and a Google AI Studio key. Extraction and research wording are hedged across `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite` (first valid answer wins); research is data first, and the LLM only rewords under a number guard. `gemini-3.8-flash` is planned for the memo. See `ai.md`.
 - Market data: `MarketDataProvider` interface with `FinnhubProvider` (real tickers) and `FixtureProvider` (fictional companies in `backend/fixtures/`)
 - Classifier: sentence-transformers embeddings + scikit-learn logistic regression
 - Frontend: React + TypeScript + Vite, Zustand, Framer Motion (restrained)

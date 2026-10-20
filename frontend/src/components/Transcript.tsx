@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { swapSpeakers } from "../lib/callSession";
+import { CLAIM_STATUS } from "../lib/claimText";
 import { displayRole, formatClock } from "../lib/callState";
-import type { Utterance } from "../lib/events.gen";
+import type { Claim, Utterance } from "../lib/events.gen";
 import { highlightSegments, offerPhrasesFor } from "../lib/highlight";
 import { useCallStore } from "../stores/call";
 
@@ -35,7 +36,7 @@ type LineVoice = "caller" | "user" | "pending";
 
 const WHO: Record<LineVoice, string> = { caller: "Caller", user: "You", pending: "Speaking…" };
 
-function Line({ u, voice, phrases = [] }: { u: Utterance; voice: LineVoice; phrases?: string[] }) {
+function Line({ u, voice, phrases = [], claims = [] }: { u: Utterance; voice: LineVoice; phrases?: string[]; claims?: Claim[] }) {
   const body = (
     <>
       <p className="line__meta">
@@ -53,6 +54,14 @@ function Line({ u, voice, phrases = [] }: { u: Utterance; voice: LineVoice; phra
             )
           : u.text}
         {voice === "pending" ? "…" : ""}
+        {voice === "caller" &&
+          claims.map((c) => {
+            if (c.status === "checking") return null;
+            const st = CLAIM_STATUS[c.status];
+            return (
+              <span key={c.id} className="chip" style={{ color: st.color }}>{st.label}</span>
+            );
+          })}
       </p>
     </>
   );
@@ -65,7 +74,7 @@ function Line({ u, voice, phrases = [] }: { u: Utterance; voice: LineVoice; phra
 }
 
 export function Transcript() {
-  const { utterances, userIndices, labelsLocked, offer } = useCallStore();
+  const { utterances, userIndices, labelsLocked, offer, claims } = useCallStore();
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const [away, setAway] = useState(false);
@@ -114,7 +123,7 @@ export function Transcript() {
         {utterances.length === 0 && <p className="muted">Words appear here as people speak.</p>}
         <div role="log" aria-live="polite">
           {finals.map((u) => (
-            <Line key={u.id} u={u} voice={displayRole(u, userIndices)} phrases={offerPhrasesFor(offer, u.id)} />
+            <Line key={u.id} u={u} voice={displayRole(u, userIndices)} phrases={offerPhrasesFor(offer, u.id)} claims={claims.filter((c) => c.utterance_id === u.id)} />
           ))}
         </div>
         {partials.map((u) => (

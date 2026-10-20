@@ -151,6 +151,194 @@
       "title": "CallStop",
       "type": "object"
     },
+    "Claim": {
+      "description": "A factual statement by the caller. The LLM may extract it; only data decides its status (M3).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "price_change",
+            "return",
+            "guarantee",
+            "event",
+            "fee",
+            "price",
+            "other"
+          ],
+          "type": "string"
+        },
+        "claimed_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Ticker or company the claim is about"
+        },
+        "utterance_id": {
+          "type": "string"
+        },
+        "status": {
+          "default": "checking",
+          "enum": [
+            "checking",
+            "verified",
+            "false",
+            "not_found",
+            "unverifiable"
+          ],
+          "type": "string"
+        },
+        "actual_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "checked_in_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Plain-words detail of the check, e.g. 'last 13 weeks'"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "metric",
+        "claimed_value",
+        "unit",
+        "period",
+        "subject",
+        "utterance_id",
+        "status",
+        "actual_value",
+        "source",
+        "checked_in_ms",
+        "note"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimChecked": {
+      "description": "A claim with its verdict. The verdict comes from data and arithmetic, never from the LLM.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "claim.checked",
+          "default": "claim.checked",
+          "type": "string"
+        },
+        "claim": {
+          "$ref": "#/$defs/Claim"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "claim"
+      ],
+      "title": "ClaimChecked",
+      "type": "object"
+    },
+    "Fact": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "value",
+        "source"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
     "HealthPing": {
       "description": "Client -> server. `client_sent_ms` is the client's clock, echoed back.",
       "properties": {
@@ -402,6 +590,180 @@
       "title": "OfferUpdated",
       "type": "object"
     },
+    "ResearchItem": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "topic": {
+          "enum": [
+            "ticker",
+            "firm"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "description": "Ticker or firm name",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "prefetching",
+            "ready",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "type": "string"
+        },
+        "facts": {
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "type": "array"
+        },
+        "source": {
+          "default": "",
+          "type": "string"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "wording": {
+          "default": "template",
+          "enum": [
+            "template",
+            "gemini"
+          ],
+          "type": "string"
+        },
+        "finding": {
+          "anyOf": [
+            {
+              "enum": [
+                "registered",
+                "not_registered"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For firms: the register result, so rules don't parse text"
+        }
+      },
+      "required": [
+        "id",
+        "topic",
+        "subject",
+        "title",
+        "status",
+        "summary",
+        "facts",
+        "source",
+        "checked_at",
+        "wording",
+        "finding"
+      ],
+      "title": "ResearchItem",
+      "type": "object"
+    },
+    "ResearchReady": {
+      "description": "A research item started (prefetching) or finished (ready / failed).",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "research.ready",
+          "default": "research.ready",
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/$defs/ResearchItem"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "item"
+      ],
+      "title": "ResearchReady",
+      "type": "object"
+    },
+    "RiskReason": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "points": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "points"
+      ],
+      "title": "RiskReason",
+      "type": "object"
+    },
+    "RiskUpdated": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "risk.updated",
+          "default": "risk.updated",
+          "type": "string"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "level": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/RiskReason"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "score",
+        "level",
+        "reasons"
+      ],
+      "title": "RiskUpdated",
+      "type": "object"
+    },
     "ServiceStatus": {
       "description": "Whether each external service has a key configured. Never carries the key.",
       "properties": {
@@ -486,6 +848,117 @@
         "locked"
       ],
       "title": "SpeakersUpdated",
+      "type": "object"
+    },
+    "Suggestion": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "say_this",
+            "research"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "text": {
+          "description": "For say_this: the words to say, first person",
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "prefetching",
+            "ready"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why Tenor suggests it, in plain words",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "type": "string"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "text",
+        "priority",
+        "status",
+        "reason",
+        "source",
+        "checked_at",
+        "expires_at"
+      ],
+      "title": "Suggestion",
+      "type": "object"
+    },
+    "SuggestionsUpdated": {
+      "description": "At most four visible suggestions, highest priority first; the rest are kept for the memo.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "suggestions.updated",
+          "default": "suggestions.updated",
+          "type": "string"
+        },
+        "visible": {
+          "items": {
+            "$ref": "#/$defs/Suggestion"
+          },
+          "type": "array"
+        },
+        "earlier": {
+          "items": {
+            "$ref": "#/$defs/Suggestion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "visible",
+        "earlier"
+      ],
+      "title": "SuggestionsUpdated",
       "type": "object"
     },
     "Term": {
@@ -723,13 +1196,17 @@
           "call.start": "#/$defs/CallStart",
           "call.started": "#/$defs/CallStarted",
           "call.stop": "#/$defs/CallStop",
+          "claim.checked": "#/$defs/ClaimChecked",
           "health.ping": "#/$defs/HealthPing",
           "health.pong": "#/$defs/HealthPong",
           "health.status": "#/$defs/HealthStatus",
           "offer.changed": "#/$defs/OfferChanged",
           "offer.updated": "#/$defs/OfferUpdated",
+          "research.ready": "#/$defs/ResearchReady",
+          "risk.updated": "#/$defs/RiskUpdated",
           "speakers.swap": "#/$defs/SpeakersSwap",
           "speakers.updated": "#/$defs/SpeakersUpdated",
+          "suggestions.updated": "#/$defs/SuggestionsUpdated",
           "transcriber.status": "#/$defs/TranscriberStatus",
           "utterance.final": "#/$defs/UtteranceFinal",
           "utterance.partial": "#/$defs/UtterancePartial"
@@ -778,6 +1255,18 @@
         },
         {
           "$ref": "#/$defs/OfferChanged"
+        },
+        {
+          "$ref": "#/$defs/ClaimChecked"
+        },
+        {
+          "$ref": "#/$defs/ResearchReady"
+        },
+        {
+          "$ref": "#/$defs/SuggestionsUpdated"
+        },
+        {
+          "$ref": "#/$defs/RiskUpdated"
         }
       ],
       "title": "TenorEvent"

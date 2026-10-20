@@ -1,4 +1,4 @@
-import type { CallEnded, Offer, TenorEvent, Utterance } from "./events.gen";
+import type { CallEnded, Claim, Offer, ResearchItem, RiskUpdated, Suggestion, TenorEvent, Utterance } from "./events.gen";
 
 export type CallPhase = "connecting" | "live" | "ended" | "lost";
 export type Role = "caller" | "user";
@@ -17,6 +17,10 @@ export interface CallState {
   endReason: CallEnded["reason"] | null;
   lostMessage: string | null;
   offer: Offer | null;
+  claims: Claim[];
+  research: Record<string, ResearchItem>;
+  suggestions: { visible: Suggestion[]; earlier: Suggestion[] };
+  risk: RiskUpdated | null;
 }
 
 export const LOST_MESSAGE = "Lost connection to Tenor's server. This call is no longer being transcribed.";
@@ -35,6 +39,10 @@ export const initialCallState: CallState = {
   endReason: null,
   lostMessage: null,
   offer: null,
+  claims: [],
+  research: {},
+  suggestions: { visible: [], earlier: [] },
+  risk: null,
 };
 
 const CALL_EVENT_TYPES = new Set<string>([
@@ -46,6 +54,10 @@ const CALL_EVENT_TYPES = new Set<string>([
   "call.ended",
   "offer.updated",
   "offer.changed",
+  "claim.checked",
+  "research.ready",
+  "suggestions.updated",
+  "risk.updated",
 ]);
 
 /** Parse a raw socket message. Returns null for anything that isn't a known server call event. */
@@ -92,6 +104,19 @@ export function applyCallEvent(state: CallState, event: TenorEvent, nowMs: numbe
       return { ...state, transcriber: { state: event.state, detail: event.detail } };
     case "offer.updated":
       return { ...state, offer: event.offer };
+    case "claim.checked": {
+      const i = state.claims.findIndex((c) => c.id === event.claim.id);
+      const claims = state.claims.slice();
+      if (i === -1) claims.push(event.claim);
+      else claims[i] = event.claim;
+      return { ...state, claims };
+    }
+    case "research.ready":
+      return { ...state, research: { ...state.research, [event.item.id]: event.item } };
+    case "suggestions.updated":
+      return { ...state, suggestions: { visible: event.visible, earlier: event.earlier } };
+    case "risk.updated":
+      return { ...state, risk: event };
     case "call.ended":
       return state.phase === "lost" ? state : { ...state, phase: "ended", endReason: event.reason, endedAtMs: nowMs };
     default:

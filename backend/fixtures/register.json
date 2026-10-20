@@ -1,0 +1,7 @@
+{
+  "source": "Tenor test register (fictional firms only)",
+  "note": "Stands in for a real regulator register (e.g. a national financial-services register). Only fictional firms appear here; real firms are 'couldn't verify' in this prototype.",
+  "firms": [
+    {"name": "Riverside Savings Bank", "status": "registered", "register_id": "TEST-BANK-0147", "since": "1998", "permissions": ["deposits", "investment advice"]}
+  ]
+}

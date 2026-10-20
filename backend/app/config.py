@@ -23,11 +23,12 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
 
     # Gemini model per job (see ai.md). Swappable without code changes.
-    # Measured 2026-10-20 (structured output, same prompt): 3.1-flash-lite 1.3-5.4 s,
-    # 3.5-flash-lite 8-30 s with timeouts. See docs/decisions.md.
-    tenor_model_fast: str = "gemini-3.1-flash-lite"  # fuzzy extraction, async, off the hot path
+    # Comma-separated: requests are hedged across these (first valid answer wins), because
+    # per-model latency flipped between 0.8 s and 30 s across two days. See docs/decisions.md.
+    tenor_model_fast: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite"  # extraction + wording, async
     tenor_llm_timeout_s: float = 8.0
-    tenor_model_research: str = "gemini-3.8-flash"  # research agent with tool calls
+    tenor_wording_timeout_s: float = 6.0
+    finnhub_timeout_s: float = 3.0
     tenor_model_memo: str = "gemini-3.8-flash"  # one memo per call, after hang-up
 
 

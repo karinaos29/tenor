@@ -1,5 +1,5 @@
 {
-  "note": "Ground truth for scripts/honest_voo.txt. 'Past returns don't guarantee future results' must NOT become a guarantee claim; the IRA deadline is real (hard honest case).",
+  "note": "Ground truth for scripts/honest_voo.txt. 'Past returns don't guarantee future results' must NOT become a guarantee claim; the IRA deadline is real (hard honest case). M3: VOO market data comes from live Finnhub, so the honest check expects no false claims rather than exact numbers.",
   "offer": {
     "caller_name": "Tom Becker",
     "firm": "Riverside Savings Bank",
@@ -13,6 +13,32 @@
   },
   "changes": [],
   "claims": [
-    {"metric": "fee", "claimed_value": 0.03, "unit": "%", "period": "a year", "subject": "VOO"}
-  ]
+    {
+      "metric": "fee",
+      "claimed_value": 0.03,
+      "unit": "%",
+      "period": "a year",
+      "subject": "VOO"
+    }
+  ],
+  "checks": [
+    {
+      "metric": "fee",
+      "status": "unverifiable"
+    }
+  ],
+  "no_check_status": [
+    "false",
+    "not_found"
+  ],
+  "research": [
+    {
+      "id": "r-firm-riverside-savings-bank",
+      "finding": "registered"
+    }
+  ],
+  "risk": {
+    "level": "low",
+    "max_score": 24
+  }
 }

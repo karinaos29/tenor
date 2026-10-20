@@ -27,9 +27,11 @@ from pipeline.events import (
     client_event_adapter,
 )
 from pipeline.latency import record
-from pipeline.llm import LlmClient
+from pipeline.llm import fast_llm
 from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
+from providers.catalog import default_catalog
+from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("tenor.app")
@@ -38,8 +40,12 @@ app = FastAPI(title="Tenor", version=VERSION)
 
 # Swappable in tests (fake transcriber, temp replay folder).
 app.state.transcriber_factory = lambda: DeepgramTranscriber(get_settings().deepgram_api_key)
-app.state.llm_factory = lambda: LlmClient(
-    get_settings().gemini_api_key, get_settings().tenor_model_fast, timeout_s=get_settings().tenor_llm_timeout_s
+app.state.llm_factory = lambda: fast_llm(
+    get_settings().gemini_api_key, get_settings().tenor_model_fast, get_settings().tenor_llm_timeout_s
+)
+app.state.market_factory = lambda: RoutedMarketData(
+    FixtureProvider(default_catalog()),
+    FinnhubProvider(get_settings().finnhub_api_key, timeout_s=get_settings().finnhub_timeout_s),
 )
 app.state.replay_dir = Path(__file__).resolve().parents[1] / "fixtures" / "calls"
 
@@ -145,6 +151,8 @@ async def call_socket(ws: WebSocket) -> None:
         send=lambda event: ws.send_text(event.model_dump_json()),
         replay_id=first.replay_id,
         llm=app.state.llm_factory(),
+        market=app.state.market_factory(),
+        wording_timeout=get_settings().tenor_wording_timeout_s,
     )
     log.info("call %s started (%s)", session.id, first.source)
     run = asyncio.create_task(session.run())

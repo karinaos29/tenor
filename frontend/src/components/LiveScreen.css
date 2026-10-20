@@ -64,3 +64,39 @@
 .offer__value--num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .offer__was { color: var(--muted); font-size: 13px; }
 .offer__note { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+/* Suggestions */
+.sug__list { display: flex; flex-direction: column; gap: 10px; }
+.sug { border-radius: var(--radius-control); padding: 12px 14px; }
+.sug p { margin: 0; }
+.sug--say { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border: 1px solid var(--accent); }
+.sug__label { color: var(--accent-ink); font-size: 13px; font-weight: 600; }
+.sug__say { color: var(--ink); font-size: 18px; line-height: 1.45; margin-top: 4px !important; }
+.sug__reason { color: var(--muted); font-size: 13px; margin-top: 6px !important; }
+.sug--research { background: var(--sunk); border: 1px solid var(--line); }
+.sug__rlabel { color: var(--muted); font-size: 13px; }
+.sug__title { font-size: 15px; font-weight: 600; margin-top: 2px !important; }
+.sug__body { font-size: 15px; margin-top: 4px !important; }
+.sug__src { color: var(--muted); font-size: 12px; margin-top: 6px !important; }
+
+/* Claims vs. data */
+.claims { list-style: none; margin: 0; padding: 0; }
+.claims__row { padding: 10px 0; border-top: 1px solid var(--line); }
+.claims__row:first-child { border-top: 0; padding-top: 0; }
+.claims__row p { margin: 0; }
+.claims__claim { font-size: 15px; }
+.claims__data { font-size: 15px; margin-top: 2px !important; }
+.claims__status { font-size: 13px; font-weight: 600; margin-top: 4px !important; }
+.claims__src { color: var(--muted); font-size: 12px; margin-top: 2px !important; }
+.claims .numbers, .claims__claim .numbers { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Risk pill */
+.pill--risk { font-weight: 600; }
+.pill--low { color: var(--ok); border-color: var(--ok); }
+.pill--medium { color: var(--warn); border-color: var(--warn); }
+.pill--high { color: var(--danger); border-color: var(--danger); }
+.pill--critical { color: var(--danger); border: 2px solid var(--danger); font-weight: 700; background: color-mix(in srgb, var(--danger) 18%, var(--surface)); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Transcript claim chip */
+.chip { display: inline-block; margin-left: 8px; padding: 0 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1.5; vertical-align: middle; }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { endCall, newCall } from "../lib/callSession";
 import { formatClock } from "../lib/callState";
 import { useCallStore } from "../stores/call";
+import { RiskPill } from "./RiskPill";
 
 export function CallStrip() {
   const { phase, source, replayTitle, startedAtMs, endedAtMs, offer } = useCallStore();
@@ -44,7 +45,7 @@ export function CallStrip() {
       </div>
 
       <div className="strip__actions">
-        <span className="pill muted">Risk · not scored yet</span>
+        <RiskPill />
         {done ? (
           <button className="btn" onClick={newCall}>New call</button>
         ) : (

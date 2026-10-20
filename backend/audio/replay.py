@@ -17,19 +17,25 @@ from app.config import get_settings
 from audio.sources import FileSource
 from pipeline.events import (
     CallEnded,
+    ClaimChecked,
     ClaimExtracted,
     Event,
     Offer,
     OfferChanged,
     OfferUpdated,
+    ResearchReady,
+    RiskUpdated,
     SpeakersUpdated,
+    SuggestionsUpdated,
     TranscriberStatus,
     UtteranceFinal,
 )
 from pipeline.latency import LOG_PATH
-from pipeline.llm import LlmClient
+from pipeline.llm import fast_llm
 from pipeline.session import UI_EVENTS, CallSession
 from pipeline.transcriber import DeepgramTranscriber
+from providers.catalog import default_catalog
+from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
 final_offer: list[Offer] = []
 
@@ -55,8 +61,26 @@ async def print_event(event: Event) -> None:
     elif isinstance(event, ClaimExtracted):
         c = event.claim
         print(f"  · claim ({c.metric}): {c.text!r} value={c.claimed_value} {c.unit or ''} period={c.period}")
+    elif isinstance(event, ClaimChecked):
+        c = event.claim
+        actual = f" data={c.actual_value:+g}" if c.actual_value is not None and c.metric != "price" else (f" market=${c.actual_value}" if c.actual_value is not None else "")
+        print(f"  ✓ CHECKED {c.metric}: {c.status.upper()}{actual} ({c.note or ''}) [{c.source or 'no source'}] in {c.checked_in_ms} ms")
+    elif isinstance(event, ResearchReady):
+        i = event.item
+        if i.status != "prefetching":
+            print(f"  · research {i.status} [{i.wording}]: {i.title}: {i.summary}")
+    elif isinstance(event, SuggestionsUpdated):
+        top = [f"{s.priority}:{s.id}" for s in event.visible]
+        if top != _last_top:
+            _last_top[:] = top
+            print(f"  · suggestions: {', '.join(top)}")
+    elif isinstance(event, RiskUpdated):
+        print(f"  · RISK {event.score} {event.level}: " + "; ".join(f"+{r.points} {r.label}" for r in event.reasons))
     elif isinstance(event, CallEnded):
         print(f"  · call ended ({event.reason})")
+
+
+_last_top: list[str] = []
 
 
 def print_offer(offer: Offer) -> None:
@@ -86,7 +110,11 @@ async def main(path: Path) -> None:
         DeepgramTranscriber(settings.deepgram_api_key),
         print_event,
         replay_id=path.stem,
-        llm=LlmClient(settings.gemini_api_key, settings.tenor_model_fast, timeout_s=settings.tenor_llm_timeout_s),
+        llm=fast_llm(settings.gemini_api_key, settings.tenor_model_fast, settings.tenor_llm_timeout_s),
+        market=RoutedMarketData(
+            FixtureProvider(default_catalog()), FinnhubProvider(settings.finnhub_api_key, timeout_s=settings.finnhub_timeout_s)
+        ),
+        wording_timeout=settings.tenor_wording_timeout_s,
         forward=(*UI_EVENTS, ClaimExtracted),
     )
     print(f"Replaying {path.name} ({source.duration_s:.1f} s), call {session.id}")

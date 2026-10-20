@@ -6,7 +6,7 @@ Stage 2, Gemini (async, caller lines only, and only for fuzzy cases: company
 events like "signed a deal", or names in the first lines that rules missed).
 Anything the LLM returns must quote words that were actually said, or it's dropped.
 
-Consumes: UtteranceFinal, UtterancesClosed.
+Consumes: UtteranceProgress (complete sentences, early), UtteranceFinal (the rest), UtterancesClosed.
 Publishes: EntityDetected, ClaimExtracted, EntitiesClosed.
 """
 
@@ -29,11 +29,12 @@ from pipeline.events import (
     EntityDetected,
     EntityKind,
     Utterance,
+    UtteranceProgress,
     UtterancesClosed,
     UtteranceFinal,
 )
 from pipeline.latency import record
-from pipeline.llm import LlmClient
+from pipeline.llm import HedgedLlm, LlmClient
 from pipeline.numbers import Normalized, normalize
 from providers.catalog import Catalog
 
@@ -43,6 +44,7 @@ MONTHS = "january|february|march|april|may|june|july|august|september|october|no
 DAYS = "monday|tuesday|wednesday|thursday|friday|saturday|sunday"
 
 _SENTENCE = re.compile(r"(?<=[.?!])\s+(?=[A-Z])")
+_SENTENCE_END = re.compile(r"[.?!](?=\s|$)")
 _NUMBER = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
 _DOLLARS = re.compile(rf"\$\s?({_NUMBER})")
 _CENTS = re.compile(r"\b(\d+(?:\.\d+)?)\s?(?:cents?\b|¢)", re.I)
@@ -383,7 +385,7 @@ class EntityExtractor:
         self,
         bus: EventBus,
         catalog: Catalog,
-        llm: LlmClient | None = None,
+        llm: LlmClient | HedgedLlm | None = None,
         *,
         call_id: str = "",
         source: str = "",
@@ -395,7 +397,9 @@ class EntityExtractor:
         self.call_id = call_id
         self.source = source
         self.drain_timeout = drain_timeout
-        self._sub = bus.subscribe(UtteranceFinal, UtterancesClosed)
+        self._sub = bus.subscribe(UtteranceFinal, UtteranceProgress, UtterancesClosed)
+        self._done: dict[str, int] = {}  # utterance id -> characters already processed
+        self._seen_text: dict[str, str] = {}
         self._pending: set[asyncio.Task] = set()
         self._subject: str | None = None
         self._caller_lines = 0
@@ -405,8 +409,10 @@ class EntityExtractor:
 
     async def run(self) -> None:
         async for event in self._sub:
-            if isinstance(event, UtteranceFinal):
-                self._handle(event.utterance)
+            if isinstance(event, UtteranceProgress):
+                self._chunk(event.utterance, final=False)
+            elif isinstance(event, UtteranceFinal):
+                self._chunk(event.utterance, final=True)
             elif isinstance(event, UtterancesClosed):
                 break
         if self._pending:
@@ -459,6 +465,23 @@ class EntityExtractor:
                 )
             )
         )
+
+    def _chunk(self, u: Utterance, final: bool) -> None:
+        """Process only text not seen yet: complete sentences while the turn is in progress,
+        the rest when it's final. Same utterance id either way, so highlights still match."""
+        done = self._done.get(u.id, 0)
+        text = u.text
+        if text[:done] != (self._seen_text.get(u.id, "")[:done]):
+            done = 0  # the finalized text changed under us; start over for safety
+        end = len(text) if final else max((m.end() for m in _SENTENCE_END.finditer(text, done)), default=done)
+        chunk = text[done:end].strip()
+        self._done[u.id] = end
+        self._seen_text[u.id] = text
+        if chunk:
+            self._handle(u.model_copy(update={"text": chunk}))
+        if final:
+            self._done.pop(u.id, None)
+            self._seen_text.pop(u.id, None)
 
     def _handle(self, u: Utterance) -> None:
         started = time.perf_counter()

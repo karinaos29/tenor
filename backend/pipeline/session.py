@@ -3,10 +3,14 @@
     source -> level meter (audio.level) -> transcriber -> labeler -> utterance.*
                                                   \\-> transcriber.status
     utterance.final -> extractor -> entity.* / claim.* -> offer tracker -> offer.*
+    claim.* / offer.* -> claim checker (data + arithmetic) -> claim.checked
+    entity.* (ticker, firm) -> research agent (prefetch, LLM rewords) -> research.ready
+    claim.checked / research.ready / offer.* -> suggestion engine -> suggestions.updated, risk.updated
 
 End of call is a chain, so nothing is cut off: transcript.closed -> labeler ->
 utterances.closed -> extractor (waits for pending LLM calls) -> entities.closed ->
-offer tracker -> call.ended.
+offer tracker, and checker + research drain -> checks.closed / research.closed ->
+suggestion engine's final state -> call.ended.
 
 The session owns the bus and the task lifecycle; components only see the bus.
 Live mic and replay run through exactly this code.
@@ -24,23 +28,35 @@ from pipeline.events import (
     AudioLevel,
     CallEnded,
     CallStarted,
+    ChecksClosed,
+    ClaimChecked,
     EntitiesClosed,
     Event,
     OfferChanged,
+    OfferClosed,
     OfferUpdated,
+    ResearchClosed,
+    ResearchReady,
+    RiskUpdated,
     SpeakersSwap,
     SpeakersUpdated,
+    SuggestionsUpdated,
     TranscriberStatus,
     TranscriptClosed,
     UtterancesClosed,
     UtteranceFinal,
     UtterancePartial,
 )
+from pipeline.checker import ClaimChecker
 from pipeline.extractor import EntityExtractor
-from pipeline.llm import LlmClient
+from pipeline.llm import HedgedLlm, LlmClient
 from pipeline.offer import OfferTracker
+from pipeline.research import ResearchAgent
 from pipeline.speakers import SpeakerLabeler
+from pipeline.suggestions import SuggestionEngine
 from providers.catalog import Catalog, default_catalog
+from providers.market import FixtureProvider, MarketDataProvider, RoutedMarketData
+from providers.register import FixtureRegister
 from pipeline.transcriber import AudioItem, Transcriber, TranscriberContext
 
 log = logging.getLogger("tenor.session")
@@ -54,6 +70,10 @@ UI_EVENTS: tuple[type[Event], ...] = (
     UtteranceFinal,
     OfferUpdated,
     OfferChanged,
+    ClaimChecked,
+    ResearchReady,
+    SuggestionsUpdated,
+    RiskUpdated,
     CallEnded,
 )
 
@@ -63,6 +83,8 @@ FAST_FINISH_TIMEOUT = 30.0
 LABELER_FINISH_TIMEOUT = 2.0
 EXTRACTOR_FINISH_TIMEOUT = 10.0  # covers pending LLM calls (8 s budget each, run in parallel)
 TRACKER_FINISH_TIMEOUT = 1.0
+VERIFY_FINISH_TIMEOUT = 10.0  # checker + research drain (provider timeouts 3 s, wording 6 s)
+SUGGESTIONS_FINISH_TIMEOUT = 2.0
 
 Send = Callable[[Event], Awaitable[None]]
 
@@ -76,7 +98,10 @@ class CallSession:
         *,
         replay_id: str | None = None,
         catalog: Catalog | None = None,
-        llm: LlmClient | None = None,
+        llm: LlmClient | HedgedLlm | None = None,
+        market: MarketDataProvider | None = None,
+        register: FixtureRegister | None = None,
+        wording_timeout: float = 6.0,
         forward: tuple[type[Event], ...] = UI_EVENTS,
     ) -> None:
         self.id = uuid.uuid4().hex[:8]
@@ -85,7 +110,11 @@ class CallSession:
         self.send = send
         self.replay_id = replay_id
         self.catalog = catalog or default_catalog()
-        self.llm = llm  # None = rules-only extraction
+        self.llm = llm  # None = rules-only extraction, template wording
+        # Default: test data only (no network). The gateway and replay CLI pass Finnhub in.
+        self.market = market or RoutedMarketData(FixtureProvider(self.catalog), None)
+        self.register = register or FixtureRegister(self.catalog)
+        self.wording_timeout = wording_timeout
         self.forward = forward
         self.bus = EventBus()
         self._stopped_by_user = False
@@ -106,8 +135,21 @@ class CallSession:
         labeler = asyncio.create_task(SpeakerLabeler(self.bus, self.id, kind).run())
         extractor = asyncio.create_task(EntityExtractor(self.bus, self.catalog, self.llm, call_id=self.id, source=kind).run())
         tracker = asyncio.create_task(OfferTracker(self.bus, call_id=self.id, source=kind).run())
-        audio: asyncio.Queue[AudioItem] = asyncio.Queue(maxsize=AUDIO_BUFFER_FRAMES + 1)
         ctx = TranscriberContext(call_id=self.id, source=self.source.kind, realtime=self.source.realtime)
+
+        def clock(t_call: float) -> float | None:
+            """Monotonic time at which call-time `t_call` was spoken (real-time sources only)."""
+            return ctx.wall_start + t_call if ctx.wall_start is not None and ctx.realtime else None
+
+        checker = asyncio.create_task(ClaimChecker(self.bus, self.market, call_id=self.id, source=kind, clock=clock).run())
+        research = asyncio.create_task(
+            ResearchAgent(
+                self.bus, self.market, self.register, self.catalog, self.llm,
+                call_id=self.id, source=kind, wording_timeout=self.wording_timeout,
+            ).run()
+        )  # fmt: skip
+        suggestions = asyncio.create_task(SuggestionEngine(self.bus, call_id=self.id).run())
+        audio: asyncio.Queue[AudioItem] = asyncio.Queue(maxsize=AUDIO_BUFFER_FRAMES + 1)
 
         self.bus.publish(CallStarted(call_id=self.id, source=self.source.kind, replay_id=self.replay_id))
         transcriber = asyncio.create_task(self.transcriber.run(audio, self.bus, ctx))
@@ -124,7 +166,10 @@ class CallSession:
             await self._finish(transcriber, finish, on_timeout=TranscriptClosed())
             await self._finish(labeler, LABELER_FINISH_TIMEOUT, on_timeout=UtterancesClosed())
             await self._finish(extractor, EXTRACTOR_FINISH_TIMEOUT, on_timeout=EntitiesClosed())
-            await self._finish(tracker, TRACKER_FINISH_TIMEOUT)
+            await self._finish(tracker, TRACKER_FINISH_TIMEOUT, on_timeout=OfferClosed())
+            await self._finish(checker, VERIFY_FINISH_TIMEOUT, on_timeout=ChecksClosed())
+            await self._finish(research, VERIFY_FINISH_TIMEOUT, on_timeout=ResearchClosed())
+            await self._finish(suggestions, SUGGESTIONS_FINISH_TIMEOUT)
             if self._stopped_by_user and reason != "error":
                 reason = "user"
             self.bus.publish(CallEnded(reason=reason, detail=detail))  # type: ignore[arg-type]

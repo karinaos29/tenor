@@ -4,7 +4,7 @@ Only the caller's words fill the offer. A new value for a term that's already se
 is a change ("10,000 shares, was 5,000"), kept in the history. The total is plain
 arithmetic (price x quantity), never generated.
 
-Consumes: EntityDetected, EntitiesClosed. Publishes: OfferUpdated, OfferChanged.
+Consumes: EntityDetected, EntitiesClosed. Publishes: OfferUpdated, OfferChanged, OfferClosed.
 """
 
 import time
@@ -17,6 +17,7 @@ from pipeline.events import (
     EntityKind,
     Offer,
     OfferChanged,
+    OfferClosed,
     OfferField,
     OfferUpdated,
     Term,
@@ -62,6 +63,7 @@ class OfferTracker:
                 self.apply(event.entity)
             elif isinstance(event, EntitiesClosed):
                 break
+        self.bus.publish(OfferClosed())  # after every offer update, so the checker sees them all
         self._sub.close()
 
     def apply(self, e: Entity) -> None:

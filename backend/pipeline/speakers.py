@@ -18,7 +18,7 @@ Who is "You" (architecture doc: loudness heuristic + first-turn rule):
    No new splits after that: the user has said who is who.
 
 Consumes: AudioLevel, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap.
-Publishes: UtterancePartial, UtteranceFinal, SpeakersUpdated, and UtterancesClosed when done.
+Publishes: UtterancePartial, UtteranceProgress, UtteranceFinal, SpeakersUpdated, and UtterancesClosed when done.
 """
 
 import math
@@ -36,6 +36,7 @@ from pipeline.events import (
     TranscriptSegment,
     TranscriptUtteranceEnd,
     Utterance,
+    UtteranceProgress,
     UtterancesClosed,
     UtteranceFinal,
     UtterancePartial,
@@ -177,6 +178,7 @@ class SpeakerLabeler:
         if seg.speech_final:
             self._finalize()
         else:
+            self._emit_progress()
             self._emit_partial()
 
     # --- utterances -------------------------------------------------------------------
@@ -197,6 +199,14 @@ class SpeakerLabeler:
             t_end=words[-1].end,
             is_final=is_final,
         )
+
+    def _emit_progress(self) -> None:
+        """Finalized words of the turn in progress, so a finished sentence can be checked now."""
+        words = smooth_speakers(self._words)
+        if words:
+            speaker = words[0].speaker
+            voice = self._route(speaker, self._measure(words)) if speaker in self._second_voice else speaker
+            self.bus.publish(UtteranceProgress(utterance=self._utterance(self._current_id(), words, False, voice)))
 
     def _emit_partial(self) -> None:
         # Same smoothing as finals, so a mislabeled first word can't mislabel the whole partial.

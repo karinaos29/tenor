@@ -51,6 +51,18 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 
 **What M2 showed about routing:** the most valuable "model" step was running the real pipeline on real audio. Five of the M2 bugs only appeared there. Cheap models write good tests against the spec, but only reality tests the spec itself.
 
+### Who did what in M3 (Used)
+
+| Task | Model | Effort | Result |
+|---|---|---|---|
+| Probe Finnhub's free tier and re-measure Gemini before planning | **no subagent**: direct read-only API calls | — | Found the free 13-week return (≈ "this quarter") and the paid-only endpoints. Gemini's ranking had flipped overnight, so I chose **hedged calls** rather than one "best" model. |
+| Providers, claim checker, research agent + number guard, suggestion/risk rules, session chain, early sentence extraction | **Opus 5.5** (main session) | session default | Contracts and verdict arithmetic stayed with the expensive model. |
+| Suggestions, claims and risk UI, transcript chips, 11 tests | **Sonnet 5.5** subagent, background | medium | 73.3k tokens, 11 tool calls, ~1 min, all checks passing. |
+| Backend test suite for M3 | **Sonnet 5.5** subagent, background | medium | 122.0k tokens, 22 tool calls, ~4 min, 158 new tests. Found a real end-of-call race (a price check could be lost), fixed with an `offer.closed` marker. |
+| Plain-words rewording of research results | **Gemini**, hedged `3.5-flash-lite` + `3.1-flash-lite` | thinking `minimal` | 0.8–1.0 s on real calls. The number guard caught spelled-out numbers ("thirty-eight cents") and a dropped key figure on the first try; both are now rejected. |
+
+**What M3 showed:** measuring the demo metric end to end changed the design. Per stage, everything was fast (checks < 1 ms, providers 0.3 s), but "spoken → flagged" for the key claim was 3.8 s, because extraction waited for the whole turn to end. Sentence-level extraction fixed it. A stage-by-stage view would have hidden this.
+
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
 - **Background, not blocking.** Research and scaffolding ran while the main session kept working.
@@ -75,8 +87,9 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 |---|---|---|---|---|
 | Speech-to-text, both sides, live | Deepgram **Nova-3** streaming (`/v1/listen`) | interim results, `diarize_model=latest`, endpointing 300 ms | Deepgram's recommendation for multi-speaker audio; measured 305 ms median to interim words. ~$0.0077/min + $0.0020/min diarization (list price) | **Built** (M1) |
 | Offer terms, names, tickers, clear claims (price moves, guarantees, fund fees) | **no model**: rules + number-word normalizer + catalogs | — | ~1 ms per utterance, works without a key; reproduces the full expected offer on both test calls | **Built** (M2) |
-| Fuzzy extraction: company events ("signed a deal"), names rules missed | `gemini-3.1-flash-lite` | thinking `minimal`, Pydantic `response_schema`, 8 s async budget, quotes must match what was said | Only on caller lines with event cues: 2 calls on the 3-minute scam call. Measured 1.3–5.4 s, ~260 tokens in / ~70 out. Chosen over 3.5-flash-lite, which took 8–30 s (see below) | **Built** (M2) |
-| Research agent (looks up firm, ticker, register, news via tools) | `gemini-3.8-flash` | thinking `low`, function calling | Needs reliable multi-step tool use. Flash, not Lite | Planned (M3) |
+| Fuzzy extraction: company events ("signed a deal"), names rules missed | `gemini-3.5-flash-lite` + `3.1-flash-lite`, **hedged** since M3 | thinking `minimal`, Pydantic `response_schema`, 8 s async budget, quotes must match what was said | Only on caller lines with event cues: 2 calls on the 3-minute scam call. Measured 1.3–5.4 s, ~260 tokens in / ~70 out. Chosen over 3.5-flash-lite, which took 8–30 s (see below) | **Built** (M2) |
+| Research: who is this firm, how has this stock really done, is there news | **no model** for facts (Finnhub, test register, fixtures); **Gemini, hedged** rewords the summary | 6 s budget, number guard (every number must come from the data) | Prefetched on first mention, ready in ~0.3 s from data alone; the rewording is optional polish. Replaces the planned `gemini-3.8-flash` tool-use agent, which returned 503/504 in 3 of 3 tries | **Built** (M3) |
+| Claim verdicts, suggestions, risk score | **no model**: arithmetic + scored rules | — | Verdicts must be explainable and repeatable; the LLM never decides | **Built** (M3) |
 | Who is "You" vs. "Caller" | **no model**: loudness per diarized speaker + first-turn rule; a speaker that holds two voices is split by loudness | — | Deterministic, < 1 ms, explainable; a manual swap overrides it | **Built** (M1, merged-voice split after M2) |
 | Voices for the scripted test calls (dev time) | `gemini-3.8-flash-tts`, macOS `say` as fallback | one request per turn, 3 voices, cached per line, 75 s cap + retries | Natural voices for a realistic demo and transcription test. **On 2026-10-20 the service stalled after 12 of 42 lines**, so the committed WAVs use the macOS fallback; one command re-voices them when TTS responds | Partly used (M2) |
 | Pressure-tactic detection | sentence-transformers embeddings + logistic regression (local) | — | No API cost, millisecond latency, works offline, measurable | Planned (M4) |

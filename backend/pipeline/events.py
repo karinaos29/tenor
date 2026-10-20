@@ -182,7 +182,7 @@ class Claim(BaseModel):
 
     id: str
     text: str
-    metric: Literal["price_change", "return", "guarantee", "event", "fee", "other"]
+    metric: Literal["price_change", "return", "guarantee", "event", "fee", "price", "other"]
     claimed_value: float | None = None
     unit: str | None = None
     period: str | None = None
@@ -192,6 +192,7 @@ class Claim(BaseModel):
     actual_value: float | None = None
     source: str | None = None
     checked_in_ms: float | None = None
+    note: str | None = Field(default=None, description="Plain-words detail of the check, e.g. 'last 13 weeks'")
 
 
 class Term(BaseModel):
@@ -256,6 +257,89 @@ class OfferChanged(Event):
     change: TermChange
 
 
+# --- Verifying (M3) ---------------------------------------------------------------
+
+
+class ClaimChecked(Event):
+    """A claim with its verdict. The verdict comes from data and arithmetic, never from the LLM."""
+
+    type: Literal["claim.checked"] = "claim.checked"
+    claim: Claim
+
+
+class Fact(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    label: str
+    value: str
+    source: str
+
+
+class ResearchItem(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    topic: Literal["ticker", "firm"]
+    subject: str = Field(description="Ticker or firm name")
+    title: str
+    status: Literal["prefetching", "ready", "failed"]
+    summary: str = ""
+    facts: list[Fact] = Field(default_factory=list)
+    source: str = ""
+    checked_at: datetime | None = None
+    wording: Literal["template", "gemini"] = "template"
+    finding: Literal["registered", "not_registered"] | None = Field(
+        default=None, description="For firms: the register result, so rules don't parse text"
+    )
+
+
+class ResearchReady(Event):
+    """A research item started (prefetching) or finished (ready / failed)."""
+
+    type: Literal["research.ready"] = "research.ready"
+    item: ResearchItem
+
+
+class Suggestion(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    kind: Literal["say_this", "research"]
+    title: str
+    text: str = Field(description="For say_this: the words to say, first person")
+    priority: int
+    status: Literal["prefetching", "ready"]
+    reason: str = Field(description="Why Tenor suggests it, in plain words")
+    source: str = ""
+    checked_at: datetime | None = None
+    expires_at: datetime | None = None
+
+
+class SuggestionsUpdated(Event):
+    """At most four visible suggestions, highest priority first; the rest are kept for the memo."""
+
+    type: Literal["suggestions.updated"] = "suggestions.updated"
+    visible: list[Suggestion]
+    earlier: list[Suggestion]
+
+
+class RiskReason(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    label: str
+    points: int
+
+
+RiskLevel = Literal["low", "medium", "high", "critical"]
+
+
+class RiskUpdated(Event):
+    type: Literal["risk.updated"] = "risk.updated"
+    score: int
+    level: RiskLevel
+    reasons: list[RiskReason]
+
+
 # --- Bus-internal events (never sent to the browser) ------------------------------
 
 
@@ -301,10 +385,36 @@ class TranscriptClosed(Event):
     type: Literal["transcript.closed"] = "transcript.closed"
 
 
+class UtteranceProgress(Event):
+    """The finalized words so far of a turn still in progress (no interim words). Lets the
+    extractor act on a completed sentence without waiting for the whole turn to end."""
+
+    type: Literal["utterance.progress"] = "utterance.progress"
+    utterance: Utterance
+
+
 class UtterancesClosed(Event):
     """The labeler has finalized its last utterance (end-of-call chain, stage 2)."""
 
     type: Literal["utterances.closed"] = "utterances.closed"
+
+
+class OfferClosed(Event):
+    """The offer tracker has published its last update (end-of-call chain)."""
+
+    type: Literal["offer.closed"] = "offer.closed"
+
+
+class ChecksClosed(Event):
+    """The claim checker has finished its pending checks (end-of-call chain)."""
+
+    type: Literal["checks.closed"] = "checks.closed"
+
+
+class ResearchClosed(Event):
+    """The research agent has finished its pending work (end-of-call chain)."""
+
+    type: Literal["research.closed"] = "research.closed"
 
 
 class EntitiesClosed(Event):
@@ -330,7 +440,11 @@ TenorEvent = Annotated[
     | TranscriberStatus
     | CallEnded
     | OfferUpdated
-    | OfferChanged,
+    | OfferChanged
+    | ClaimChecked
+    | ResearchReady
+    | SuggestionsUpdated
+    | RiskUpdated,
     Field(discriminator="type"),
 ]
 

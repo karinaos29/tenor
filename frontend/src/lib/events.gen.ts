@@ -14,7 +14,11 @@ export type TenorEvent =
   | TranscriberStatus
   | CallEnded
   | OfferUpdated
-  | OfferChanged;
+  | OfferChanged
+  | ClaimChecked
+  | ResearchReady
+  | SuggestionsUpdated
+  | RiskUpdated;
 
 /**
  * Every type that crosses the wire. Generated root; import the member types.
@@ -192,6 +196,108 @@ export interface OfferChanged {
   ts: string;
   type: "offer.changed";
   change: TermChange;
+}
+/**
+ * A claim with its verdict. The verdict comes from data and arithmetic, never from the LLM.
+ */
+export interface ClaimChecked {
+  ts: string;
+  type: "claim.checked";
+  claim: Claim;
+}
+/**
+ * A factual statement by the caller. The LLM may extract it; only data decides its status (M3).
+ */
+export interface Claim {
+  id: string;
+  text: string;
+  metric: "price_change" | "return" | "guarantee" | "event" | "fee" | "price" | "other";
+  claimed_value: number | null;
+  unit: string | null;
+  period: string | null;
+  /**
+   * Ticker or company the claim is about
+   */
+  subject: string | null;
+  utterance_id: string;
+  status: "checking" | "verified" | "false" | "not_found" | "unverifiable";
+  actual_value: number | null;
+  source: string | null;
+  checked_in_ms: number | null;
+  /**
+   * Plain-words detail of the check, e.g. 'last 13 weeks'
+   */
+  note: string | null;
+}
+/**
+ * A research item started (prefetching) or finished (ready / failed).
+ */
+export interface ResearchReady {
+  ts: string;
+  type: "research.ready";
+  item: ResearchItem;
+}
+export interface ResearchItem {
+  id: string;
+  topic: "ticker" | "firm";
+  /**
+   * Ticker or firm name
+   */
+  subject: string;
+  title: string;
+  status: "prefetching" | "ready" | "failed";
+  summary: string;
+  facts: Fact[];
+  source: string;
+  checked_at: string | null;
+  wording: "template" | "gemini";
+  /**
+   * For firms: the register result, so rules don't parse text
+   */
+  finding: ("registered" | "not_registered") | null;
+}
+export interface Fact {
+  label: string;
+  value: string;
+  source: string;
+}
+/**
+ * At most four visible suggestions, highest priority first; the rest are kept for the memo.
+ */
+export interface SuggestionsUpdated {
+  ts: string;
+  type: "suggestions.updated";
+  visible: Suggestion[];
+  earlier: Suggestion[];
+}
+export interface Suggestion {
+  id: string;
+  kind: "say_this" | "research";
+  title: string;
+  /**
+   * For say_this: the words to say, first person
+   */
+  text: string;
+  priority: number;
+  status: "prefetching" | "ready";
+  /**
+   * Why Tenor suggests it, in plain words
+   */
+  reason: string;
+  source: string;
+  checked_at: string | null;
+  expires_at: string | null;
+}
+export interface RiskUpdated {
+  ts: string;
+  type: "risk.updated";
+  score: number;
+  level: "low" | "medium" | "high" | "critical";
+  reasons: RiskReason[];
+}
+export interface RiskReason {
+  label: string;
+  points: number;
 }
 export interface ReplayList {
   replays: ReplayInfo[];

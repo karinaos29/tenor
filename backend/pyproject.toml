@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "numpy>=2.5.4",
     "google-genai>=2.31.0",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
@@ -24,5 +25,8 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-m 'not deepgram'"
-markers = ["deepgram: hits the real Deepgram API (needs DEEPGRAM_API_KEY); run with -m deepgram"]
+addopts = "-m 'not deepgram and not finnhub'"
+markers = [
+    "deepgram: hits the real Deepgram API (needs DEEPGRAM_API_KEY); run with -m deepgram",
+    "finnhub: hits the real Finnhub API (needs FINNHUB_API_KEY); run with -m finnhub",
+]

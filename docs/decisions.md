@@ -158,3 +158,39 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 - **Decision:** When one diarized speaker's final turns form a loud and a quiet group at least 6 dB apart (`SPLIT_DB`), the labeler splits it into two voices. The speaker number keeps the group that holds its first turn; the other group gets voice number 100 + n. The loud group is the user. A split needs about a word in the smaller group (0.3 s), 2 s in the larger one, and the two groups must land on opposite sides of the call's loudness midpoint, so no split is made where it wouldn't change a label. After a split, each stretch of that speaker's words between pauses of 0.3 s or more goes to the nearer group, so a turn change Deepgram didn't mark still starts a new line. After a manual swap, no new splits. The event contract is unchanged: `speaker_index` is now a voice number, and the UI relabels by `user_indices` as before.
 - **Why:** Deepgram put two similar female voices on one speaker number, so one side of the call took the other's role. The extractor and the offer tracker read the role when a line is sent, so the split has to label the line that reveals it, not only later ones. That's why one word is enough for the smaller group: the user's "Hello?" is 0.4 s in every real replay. Measured live: the honest call re-voiced with two female voices, where Deepgram put both on speaker 1 from 0:03; wrong roles went from 10 of 29 lines to 2 (short fragments on speaker 0). Measured offline, on words, speaker numbers and levels recorded from real replays and fed through the old and the new labeler: the two committed calls come out identical, and with every word moved onto one speaker (the original failure) the old labeler shows no caller line and an empty offer, while the new one reproduces both expected offers exactly. The worst labeler step is 0.4 ms.
 - **Alternative:** (1) Re-send earlier lines with a corrected role: fixes the history, but the extractor and the UI would have to handle revised finals (a contract change). (2) Route every turn by its own loudness, ignoring diarization: changes healthy calls, and one voice's word levels spread about ±5 dB. (3) A spectral cue (phone audio is band-limited to 300–3400 Hz): a stronger signal, but a new audio feature; worth it if loudness proves too weak on real speakerphones.
+
+---
+
+### 2026-10-21 · M3 · Research is data first; the LLM only rewords, under a number guard
+- **Decision:** When a ticker or firm is first mentioned, the research agent fetches facts from providers (no LLM) and publishes a template summary in ~0.3 s. Gemini then rewrites it in plain words. The rewrite is accepted only if every number in it (after normalizing numbers written as words) appears in the facts, and every percentage from the template is still there. Otherwise the template stays.
+- **Why:** Your choice, backed by measurements: `gemini-3.8-flash`, the planned tool-use model, returned 503/504 in 3 of 3 tries, so an LLM-driven agent might never answer during a call. The first real rewording also showed the guard was needed: Gemini wrote numbers as words ("thirty-eight cents"), which would have slipped past a digits-only check, dropped the key "−12.5%", and called a test register "official" (now forbidden in the prompt).
+- **Alternative:** A Gemini tool-use agent (the original architecture). More flexible, but too unreliable today.
+
+### 2026-10-21 · M3 · Hedged LLM calls
+- **Decision:** `TENOR_MODEL_FAST` is a list (`gemini-3.5-flash-lite,gemini-3.1-flash-lite`). Each request goes to all models at once; the first valid answer wins and the rest are cancelled. Used for extraction and rewording.
+- **Why:** Per-model latency flipped within a day: 3.5-flash-lite went from 8–30 s to 0.8 s, 3.1-flash-lite from 1.3 s to 3–19 s. Picking one model by yesterday's numbers would have been wrong today. Requests are ~300 tokens, so double cost is about $0.004 per call.
+- **Alternative:** One model with sequential fallback. That waits out the full timeout before trying the second.
+
+### 2026-10-21 · M3 · Finnhub free tier, 13-week return = "this quarter"
+- **Decision:** Real tickers use Finnhub `quote`, `stock/metric` (5-day, MTD, 13-week, YTD, 52-week returns), `stock/profile2` and `company-news`. "This quarter" maps to the 13-week return and is labeled as such. Fund costs (ETF profile) and price history (candles) are paid-only (403), so they're "Couldn't verify".
+- **Why:** Probed with your key: 200–300 ms each. A trailing 13-week window is the honest free proxy for "this quarter", and the label says exactly which window was used.
+- **Alternative:** Paid candles for exact calendar quarters.
+
+### 2026-10-21 · M3 · Verdict rules
+- **Decision:** A % claim is "verified" if the sign matches and the gap is ≤ max(3 points, 25% of the claim), otherwise "doesn't match data". An offered price must be within 5% of the market quote. Company events are matched by keywords against 90 days of news: no match = "No evidence found", a match = "Couldn't verify" plus the headline, so you judge it. Guarantees are "Couldn't verify" ("share prices can't be guaranteed").
+- **Why:** Simple arithmetic someone can check by hand. Generous tolerances avoid accusing an honest caller of rounding. Headlines are shown, never judged by an LLM.
+- **Alternative:** An LLM decides whether a headline confirms the claim. Not allowed by the rules.
+
+### 2026-10-21 · M3 · Fictional firms: a test register
+- **Decision:** `fixtures/register.json` stands in for a regulator register, for fictional firms only. Real or unknown firms are "Couldn't verify", and the source is labeled "Tenor test register (fictional firms only)".
+- **Why:** Lets the scam call show "not in the register" without a claim about any real firm.
+- **Alternative:** Scrape a real register: out of scope and fragile.
+
+### 2026-10-21 · M3 · Suggestions and risk are scored rules
+- **Decision:** "Say this" lines are fixed first-person templates with priorities: a false claim 100, firm not registered 90, guarantee 85, same-day deadline 80, no evidence 75, price mismatch 70, risky payment 65, amount raised 60. At most 2 are visible, research cards fill the rest of the 4 slots, and "say this" lines expire after 2 minutes. Risk is a capped sum of listed reasons (30/25/15/10…), with levels at 25/50/75. It's shown only once something has been checked.
+- **Why:** Deterministic and explainable; every point traces to a reason. Mixing advice and evidence follows the wireframe. Showing "Low" before anything is checked would falsely reassure.
+- **Alternative:** An LLM ranks suggestions. Slower, and not explainable.
+
+### 2026-10-21 · M3 · Labeler fix merged before M3
+- **Decision:** `main` fast-forwarded to `labeler/split-merged-voices` (a merged speaker is split by per-utterance loudness).
+- **Why:** Your call. M3's demo depends on which lines count as the caller's.

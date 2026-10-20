@@ -12,13 +12,79 @@
     "fees": null
   },
   "changes": [
-    {"field": "quantity", "old": "5,000 shares", "new": "10,000 shares"},
-    {"field": "total", "old": "$2,100", "new": "$4,200"}
+    {
+      "field": "quantity",
+      "old": "5,000 shares",
+      "new": "10,000 shares"
+    },
+    {
+      "field": "total",
+      "old": "$2,100",
+      "new": "$4,200"
+    }
   ],
   "claims": [
-    {"metric": "price_change", "claimed_value": 40, "unit": "%", "period": "this quarter", "subject": "KSTL"},
-    {"metric": "guarantee", "claimed_value": 100, "unit": "%", "period": "by Christmas", "subject": "KSTL"},
-    {"metric": "guarantee", "claimed_value": null, "subject": "KSTL"},
-    {"metric": "event", "text_contains": "signed a deal with a major carmaker", "subject": "KSTL"}
-  ]
+    {
+      "metric": "price_change",
+      "claimed_value": 40,
+      "unit": "%",
+      "period": "this quarter",
+      "subject": "KSTL"
+    },
+    {
+      "metric": "guarantee",
+      "claimed_value": 100,
+      "unit": "%",
+      "period": "by Christmas",
+      "subject": "KSTL"
+    },
+    {
+      "metric": "guarantee",
+      "claimed_value": null,
+      "subject": "KSTL"
+    },
+    {
+      "metric": "event",
+      "text_contains": "signed a deal with a major carmaker",
+      "subject": "KSTL"
+    }
+  ],
+  "checks": [
+    {
+      "metric": "price_change",
+      "status": "false",
+      "claimed_value": 40,
+      "actual_value": -12.5,
+      "note": "last 13 weeks"
+    },
+    {
+      "metric": "price",
+      "status": "false",
+      "claimed_value": 0.42,
+      "actual_value": 0.38
+    },
+    {
+      "metric": "event",
+      "status": "not_found"
+    },
+    {
+      "metric": "guarantee",
+      "status": "unverifiable"
+    }
+  ],
+  "research": [
+    {
+      "id": "r-firm-hartwell-crane",
+      "finding": "not_registered"
+    },
+    {
+      "id": "r-ticker-kstl",
+      "status": "ready"
+    }
+  ],
+  "risk": {
+    "level": "critical",
+    "min_score": 75
+  },
+  "first_say_this": "say-claim-"
 }
