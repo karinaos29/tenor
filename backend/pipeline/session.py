@@ -2,6 +2,11 @@
 
     source -> level meter (audio.level) -> transcriber -> labeler -> utterance.*
                                                   \\-> transcriber.status
+    utterance.final -> extractor -> entity.* / claim.* -> offer tracker -> offer.*
+
+End of call is a chain, so nothing is cut off: transcript.closed -> labeler ->
+utterances.closed -> extractor (waits for pending LLM calls) -> entities.closed ->
+offer tracker -> call.ended.
 
 The session owns the bus and the task lifecycle; components only see the bus.
 Live mic and replay run through exactly this code.
@@ -19,15 +24,23 @@ from pipeline.events import (
     AudioLevel,
     CallEnded,
     CallStarted,
+    EntitiesClosed,
     Event,
+    OfferChanged,
+    OfferUpdated,
     SpeakersSwap,
     SpeakersUpdated,
     TranscriberStatus,
     TranscriptClosed,
+    UtterancesClosed,
     UtteranceFinal,
     UtterancePartial,
 )
+from pipeline.extractor import EntityExtractor
+from pipeline.llm import LlmClient
+from pipeline.offer import OfferTracker
 from pipeline.speakers import SpeakerLabeler
+from providers.catalog import Catalog, default_catalog
 from pipeline.transcriber import AudioItem, Transcriber, TranscriberContext
 
 log = logging.getLogger("tenor.session")
@@ -39,6 +52,8 @@ UI_EVENTS: tuple[type[Event], ...] = (
     SpeakersUpdated,
     UtterancePartial,
     UtteranceFinal,
+    OfferUpdated,
+    OfferChanged,
     CallEnded,
 )
 
@@ -46,6 +61,8 @@ AUDIO_BUFFER_FRAMES = 63  # ~5 s of audio, enough to ride out a speech-to-text r
 TRANSCRIBER_FINISH_TIMEOUT = 10.0  # real time; fast replays get FAST_FINISH_TIMEOUT
 FAST_FINISH_TIMEOUT = 30.0
 LABELER_FINISH_TIMEOUT = 2.0
+EXTRACTOR_FINISH_TIMEOUT = 10.0  # covers pending LLM calls (8 s budget each, run in parallel)
+TRACKER_FINISH_TIMEOUT = 1.0
 
 Send = Callable[[Event], Awaitable[None]]
 
@@ -58,12 +75,18 @@ class CallSession:
         send: Send,
         *,
         replay_id: str | None = None,
+        catalog: Catalog | None = None,
+        llm: LlmClient | None = None,
+        forward: tuple[type[Event], ...] = UI_EVENTS,
     ) -> None:
         self.id = uuid.uuid4().hex[:8]
         self.source = source
         self.transcriber = transcriber
         self.send = send
         self.replay_id = replay_id
+        self.catalog = catalog or default_catalog()
+        self.llm = llm  # None = rules-only extraction
+        self.forward = forward
         self.bus = EventBus()
         self._stopped_by_user = False
         self._client_gone = False
@@ -77,8 +100,12 @@ class CallSession:
         self.bus.publish(SpeakersSwap())
 
     async def run(self) -> None:
-        forwarder = asyncio.create_task(self._forward(self.bus.subscribe(*UI_EVENTS)))
-        labeler = asyncio.create_task(SpeakerLabeler(self.bus, self.id, self.source.kind).run())
+        forwarder = asyncio.create_task(self._forward(self.bus.subscribe(*self.forward)))
+        kind = self.source.kind
+        # Components subscribe in their constructors, before any event is published.
+        labeler = asyncio.create_task(SpeakerLabeler(self.bus, self.id, kind).run())
+        extractor = asyncio.create_task(EntityExtractor(self.bus, self.catalog, self.llm, call_id=self.id, source=kind).run())
+        tracker = asyncio.create_task(OfferTracker(self.bus, call_id=self.id, source=kind).run())
         audio: asyncio.Queue[AudioItem] = asyncio.Queue(maxsize=AUDIO_BUFFER_FRAMES + 1)
         ctx = TranscriberContext(call_id=self.id, source=self.source.kind, realtime=self.source.realtime)
 
@@ -95,7 +122,9 @@ class CallSession:
             self._put(audio, None)
             finish = TRANSCRIBER_FINISH_TIMEOUT if self.source.realtime else FAST_FINISH_TIMEOUT
             await self._finish(transcriber, finish, on_timeout=TranscriptClosed())
-            await self._finish(labeler, LABELER_FINISH_TIMEOUT)
+            await self._finish(labeler, LABELER_FINISH_TIMEOUT, on_timeout=UtterancesClosed())
+            await self._finish(extractor, EXTRACTOR_FINISH_TIMEOUT, on_timeout=EntitiesClosed())
+            await self._finish(tracker, TRACKER_FINISH_TIMEOUT)
             if self._stopped_by_user and reason != "error":
                 reason = "user"
             self.bus.publish(CallEnded(reason=reason, detail=detail))  # type: ignore[arg-type]

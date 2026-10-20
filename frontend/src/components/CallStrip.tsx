@@ -4,7 +4,8 @@ import { formatClock } from "../lib/callState";
 import { useCallStore } from "../stores/call";
 
 export function CallStrip() {
-  const { phase, source, replayTitle, startedAtMs, endedAtMs } = useCallStore();
+  const { phase, source, replayTitle, startedAtMs, endedAtMs, offer } = useCallStore();
+  const who = [offer?.caller_name?.display, offer?.firm?.display].filter(Boolean).join(" · ");
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -21,8 +22,8 @@ export function CallStrip() {
   return (
     <header className="strip">
       <div className="strip__caller">
-        <p className="strip__name">Unknown caller</p>
-        <p className="muted strip__sub">Name and firm fill in as the caller says them</p>
+        <p className="strip__name">{who || "Unknown caller"}</p>
+        {!who && <p className="muted strip__sub">Name and firm fill in as the caller says them</p>}
       </div>
 
       <div className="strip__status">

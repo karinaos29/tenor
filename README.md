@@ -4,7 +4,7 @@ A live copilot for high-pressure investment sales calls. Put the call on speaker
 
 Prototype for the Hiya Voice AI Challenge. No real telephony: microphone input and recorded-call replay only.
 
-> **Status: M1 (Hear).** Live transcript from the laptop mic or a recorded call, with "You" and "Caller" labels. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
+> **Status: M2 (Understand).** Live transcript with "You" and "Caller" labels, plus the offer card (who's calling, what, price, quantity, total, deadline, payment) filling in live, with changed terms marked. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Run
 
@@ -31,7 +31,13 @@ Open http://localhost:5173. The Start screen shows which services are ready. Pre
 Replay a recorded call without the browser (same pipeline, prints the transcript and latencies), from `backend/`:
 
 ```bash
-uv run python -m audio.replay fixtures/calls/m1_hello.wav
+uv run python -m audio.replay fixtures/calls/scam_kstl.wav
+```
+
+Test calls live in `backend/fixtures/calls/`: `scam_kstl` (pushy, fictional firm and stock), `honest_voo` (bank adviser, real index fund), `m1_hello` (36 s). Scripts are plain text in `scripts/`; the expected offer and claims are in `expected/`. To re-voice the calls after editing a script (Gemini TTS, needs `GEMINI_API_KEY`), from `backend/`:
+
+```bash
+uv run python fixtures/calls/make_calls.py
 ```
 
 ## Test

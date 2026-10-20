@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "numpy>=2.5.4",
+    "google-genai>=2.31.0",
 ]
 
 [dependency-groups]

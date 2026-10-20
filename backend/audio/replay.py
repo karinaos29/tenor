@@ -15,10 +15,23 @@ from pathlib import Path
 
 from app.config import get_settings
 from audio.sources import FileSource
-from pipeline.events import CallEnded, Event, SpeakersUpdated, TranscriberStatus, UtteranceFinal
+from pipeline.events import (
+    CallEnded,
+    ClaimExtracted,
+    Event,
+    Offer,
+    OfferChanged,
+    OfferUpdated,
+    SpeakersUpdated,
+    TranscriberStatus,
+    UtteranceFinal,
+)
 from pipeline.latency import LOG_PATH
-from pipeline.session import CallSession
+from pipeline.llm import LlmClient
+from pipeline.session import UI_EVENTS, CallSession
 from pipeline.transcriber import DeepgramTranscriber
+
+final_offer: list[Offer] = []
 
 
 def _clock(seconds: float) -> str:
@@ -34,8 +47,24 @@ async def print_event(event: Event) -> None:
         print(f"  · You = speakers {event.user_indices} ({event.reason})")
     elif isinstance(event, TranscriberStatus):
         print(f"  · transcription {event.state}{': ' + event.detail if event.detail else ''}")
+    elif isinstance(event, OfferChanged):
+        c = event.change
+        print(f"  · offer changed: {c.field} {c.old.display} -> {c.new.display}")
+    elif isinstance(event, OfferUpdated):
+        final_offer[:] = [event.offer]
+    elif isinstance(event, ClaimExtracted):
+        c = event.claim
+        print(f"  · claim ({c.metric}): {c.text!r} value={c.claimed_value} {c.unit or ''} period={c.period}")
     elif isinstance(event, CallEnded):
         print(f"  · call ended ({event.reason})")
+
+
+def print_offer(offer: Offer) -> None:
+    print("\nFinal offer")
+    for name in ("caller_name", "firm", "instrument", "price", "quantity", "total", "deadline", "payment", "fees"):
+        term = getattr(offer, name)
+        if term is not None:
+            print(f"  {name:<12} {term.display}  ({'computed' if term.source == 'computed' else repr(term.said)})")
 
 
 def latency_summary(call_id: str) -> dict[str, list[float]]:
@@ -51,14 +80,19 @@ def latency_summary(call_id: str) -> dict[str, list[float]]:
 
 async def main(path: Path) -> None:
     source = FileSource(path)
+    settings = get_settings()
     session = CallSession(
         source,
-        DeepgramTranscriber(get_settings().deepgram_api_key),
+        DeepgramTranscriber(settings.deepgram_api_key),
         print_event,
         replay_id=path.stem,
+        llm=LlmClient(settings.gemini_api_key, settings.tenor_model_fast, timeout_s=settings.tenor_llm_timeout_s),
+        forward=(*UI_EVENTS, ClaimExtracted),
     )
     print(f"Replaying {path.name} ({source.duration_s:.1f} s), call {session.id}")
     await session.run()
+    if final_offer:
+        print_offer(final_offer[0])
 
     stages = latency_summary(session.id)
     if stages:

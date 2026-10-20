@@ -1,4 +1,4 @@
-import type { CallEnded, TenorEvent, Utterance } from "./events.gen";
+import type { CallEnded, Offer, TenorEvent, Utterance } from "./events.gen";
 
 export type CallPhase = "connecting" | "live" | "ended" | "lost";
 export type Role = "caller" | "user";
@@ -16,6 +16,7 @@ export interface CallState {
   transcriber: { state: "connecting" | "live" | "reconnecting" | "unavailable"; detail: string };
   endReason: CallEnded["reason"] | null;
   lostMessage: string | null;
+  offer: Offer | null;
 }
 
 export const LOST_MESSAGE = "Lost connection to Tenor's server. This call is no longer being transcribed.";
@@ -33,6 +34,7 @@ export const initialCallState: CallState = {
   transcriber: { state: "connecting", detail: "" },
   endReason: null,
   lostMessage: null,
+  offer: null,
 };
 
 const CALL_EVENT_TYPES = new Set<string>([
@@ -42,6 +44,8 @@ const CALL_EVENT_TYPES = new Set<string>([
   "utterance.partial",
   "utterance.final",
   "call.ended",
+  "offer.updated",
+  "offer.changed",
 ]);
 
 /** Parse a raw socket message. Returns null for anything that isn't a known server call event. */
@@ -86,6 +90,8 @@ export function applyCallEvent(state: CallState, event: TenorEvent, nowMs: numbe
       return { ...state, userIndices: event.user_indices, labelsLocked: event.locked };
     case "transcriber.status":
       return { ...state, transcriber: { state: event.state, detail: event.detail } };
+    case "offer.updated":
+      return { ...state, offer: event.offer };
     case "call.ended":
       return state.phase === "lost" ? state : { ...state, phase: "ended", endReason: event.reason, endedAtMs: nowMs };
     default:

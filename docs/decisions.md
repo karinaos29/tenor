@@ -110,3 +110,46 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 - **Decision:** `schema_export` emits a root `TenorWire` object referencing `TenorEvent` and the REST payloads (`ReplayList`).
 - **Why:** json-schema-to-typescript 16 ignores `--unreachableDefinitions`, so REST models not referenced from the event union weren't generated. A root that references everything makes them all reachable.
 - **Alternative:** Hand-writing the REST types. Not allowed by the rules.
+
+---
+
+### 2026-10-20 · M2 · Extraction: rules first, Gemini only for fuzzy lines, quotes enforced
+- **Decision:** Rules (regex + number-word normalizer + catalogs) extract every offer term, names, tickers, and the clear claims (price moves, guarantees, fund expense ratios). Gemini runs only on caller lines with company-event cues ("signed a deal") or on the first lines while name or firm is unknown, asynchronously. Anything it returns must quote words that were actually said, or it's dropped. If it fails or times out, the event sentences become rule claims.
+- **Why:** The offer card must fill within milliseconds and work without a key. On both scripts, rules alone reproduce the full expected offer. Quote enforcement stops the LLM from inventing claims.
+- **Alternative:** LLM for every utterance: slower, costlier, and less predictable (see the latency entry below).
+
+### 2026-10-20 · M2 · Extraction model: `gemini-3.1-flash-lite`, 8 s async budget
+- **Decision:** Default `TENOR_MODEL_FAST=gemini-3.1-flash-lite` (was `gemini-3.5-flash-lite`), `TENOR_LLM_TIMEOUT_S=8`, enforced with `asyncio.wait_for`. The HTTP option stays at Gemini's 10 s minimum.
+- **Why:** Measured today with identical structured-output requests: 3.1-flash-lite took 1.3–5.4 s (one outlier at 23.8 s), while 3.5-flash-lite took 8–30 s and often timed out. 3.1 is also cheaper ($0.25 / $1.50 per 1M). Gemini rejects an HTTP timeout under 10 s ("Minimum allowed deadline is 10s"), so a 2.5 s HTTP timeout made every call fail. Small samples, so M4 re-measures.
+- **Alternative:** Keep 3.5-flash-lite for quality. Not worth it while it can't answer within a call.
+
+### 2026-10-20 · M2 · Entity kinds `person`, `payment`, `fee` added
+- **Decision:** Beyond the architecture's `ticker|price|percent|quantity|deadline|firm`.
+- **Why:** The wireframe shows the caller's name, and the Offer model has payment and fees fields that need a source.
+- **Alternative:** A separate caller-identity event. More plumbing for the same data.
+
+### 2026-10-20 · M2 · Claims extracted but not shown until M3
+- **Decision:** `claim.extracted` is published (status `checking`) but not rendered.
+- **Why:** With no checker until M3, the UI would show "Checking…" forever, which isn't honest.
+- **Alternative:** Show them as "Not checked yet". Noise for Eszter during a call.
+
+### 2026-10-20 · M2 · Offer: caller's words only, computed total, quiet upgrades
+- **Decision:** Only `speaker == caller` entities fill the offer. A different value is a `TermChange` ("was 5,000"). The same value heard more clearly (unsure → matched) upgrades without a change event. Total = price × quantity, marked `computed`.
+- **Why:** You repeating "five thousand shares?" isn't an offer term. Changes like a doubled quantity are a signal M4 will use.
+- **Alternative:** Accept any speaker. Echoes would create fake changes.
+
+### 2026-10-20 · M2 · End-of-call chain
+- **Decision:** `transcript.closed` → labeler → `utterances.closed` → extractor (waits for pending LLM calls, ≤ 9 s) → `entities.closed` → offer tracker → `call.ended`.
+- **Why:** Without the chain, a slow LLM result or the last utterance could arrive after `call.ended` and be lost to the memo (M5).
+- **Alternative:** Fixed sleeps before `call.ended`. Either too slow or too short.
+
+### 2026-10-20 · M2 · Scripted calls voiced by Gemini TTS, per turn, cached
+- **Decision:** `make_calls.py` sends one `gemini-3.8-flash-tts` request per turn (Interactions API), one voice per role (Charon for the pushy caller, Leda for the adviser, Sulafat for you), resamples to 16 kHz, applies the same phone simulation as M1, and caches each turn.
+- **Why:** Natural voices make the demo and the transcription test realistic. Per-turn generation lets the caller's voice be band-limited separately, and the cache means editing one line re-voices only that line.
+- **Alternative:** Multi-speaker TTS in one request: fewer calls, but no per-role processing.
+- **What actually happened (2026-10-20):** Gemini TTS voiced 12 of 42 lines, then stopped responding. Requests hung past a 75 s cap and through three retries, and a single two-word probe with SDK retries off didn't return within 60 s either. So the committed WAVs use the **`--voices macos` fallback** (same scripts, processing and levels). Rerunning `make_calls.py` swaps in the Gemini voices with one command; the cache keeps the 12 finished lines. Lesson applied: the generator now has a per-request timeout and retries, as the product's own external calls do.
+
+### 2026-10-20 · M2 · `websockets` 16.x
+- **Decision:** Accept `google-genai`'s pin, which downgraded `websockets` 17.3 → 16.1.1.
+- **Why:** The transcriber only uses the asyncio client API available since 14.x, and all transcriber tests (including the fake Deepgram server) pass on 16.1.1.
+- **Alternative:** Fight the pin. No benefit.

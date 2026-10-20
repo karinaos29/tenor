@@ -12,7 +12,9 @@ export type TenorEvent =
   | UtteranceFinal
   | SpeakersUpdated
   | TranscriberStatus
-  | CallEnded;
+  | CallEnded
+  | OfferUpdated
+  | OfferChanged;
 
 /**
  * Every type that crosses the wire. Generated root; import the member types.
@@ -145,6 +147,51 @@ export interface CallEnded {
   type: "call.ended";
   reason: "user" | "replay_finished" | "error";
   detail: string;
+}
+export interface OfferUpdated {
+  ts: string;
+  type: "offer.updated";
+  offer: Offer;
+}
+export interface Offer {
+  caller_name: Term | null;
+  firm: Term | null;
+  instrument: Term | null;
+  price: Term | null;
+  quantity: Term | null;
+  total: Term | null;
+  fees: Term | null;
+  deadline: Term | null;
+  payment: Term | null;
+  history: TermChange[];
+}
+/**
+ * One term of the offer and where it came from.
+ */
+export interface Term {
+  display: string;
+  number: number | null;
+  /**
+   * Words from the transcript (empty for computed terms)
+   */
+  said: string;
+  utterance_id: string | null;
+  t: number | null;
+  confidence: "heard" | "matched" | "unsure";
+  source: "call" | "computed";
+}
+export interface TermChange {
+  field: "caller_name" | "firm" | "instrument" | "price" | "quantity" | "total" | "fees" | "deadline" | "payment";
+  old: Term;
+  new: Term;
+}
+/**
+ * A term the caller already stated changed (e.g. 5,000 -> 10,000 shares).
+ */
+export interface OfferChanged {
+  ts: string;
+  type: "offer.changed";
+  change: TermChange;
 }
 export interface ReplayList {
   replays: ReplayInfo[];

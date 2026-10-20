@@ -1,0 +1,27 @@
+# Manipulative call. Fictional firm (Hartwell & Crane) and fictional company (Kestrel Motors, KSTL).
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+# Regenerate audio: uv run python fixtures/calls/make_calls.py   (from backend/)
+YOU: Hello?
+CALLER: Good afternoon, is this Eszter? My name is Daniel Reeves, I'm calling from Hartwell and Crane.
+YOU: Yes, speaking. Sorry, who did you say?
+CALLER: Hartwell and Crane. We're a private investment firm. We work with a small number of clients who want better returns than the bank gives them.
+YOU: I see. What is this about?
+CALLER: We have a rare opportunity on a company called Kestrel Motors. The ticker is K S T L.
+YOU: Kestrel Motors. I haven't heard of them.
+CALLER: Most people haven't, yet. They just signed a deal with a major carmaker, and the stock is up forty percent this quarter.
+YOU: Forty percent? That sounds like a lot.
+CALLER: It is, and that's only the start. Right now the shares are forty-two cents each. Our analysts say it's guaranteed to double by Christmas.
+YOU: Guaranteed? How can anything be guaranteed?
+CALLER: With this deal in place, it really is a sure thing. I'd suggest you start with five thousand shares.
+YOU: Five thousand shares at forty-two cents. So about two thousand dollars?
+CALLER: Exactly, twenty-one hundred dollars. But honestly, most of our clients are taking ten thousand shares, because they don't want to miss out.
+YOU: Ten thousand? That's a lot of money for me.
+CALLER: I understand. The thing is, this price is only locked until three p.m. today. After that it goes to the open market and you'll pay much more.
+YOU: Can you email me the details first? I'd like to read them.
+CALLER: I can, but there isn't time for paperwork today. You'd just make a bank transfer to our client account this afternoon, and I'll confirm the shares by phone.
+YOU: I usually talk to my son about money decisions.
+CALLER: I'd keep this between us for now. Family and bank staff often don't understand these opportunities, and the window is very small.
+YOU: I don't make decisions on the same day.
+CALLER: Of course, it's your choice. But the clients who waited last time really regretted it. Can I put you down for ten thousand shares?
+YOU: No. Please send me something in writing, and I'll think about it.
+CALLER: All right. I'll call you back before three.

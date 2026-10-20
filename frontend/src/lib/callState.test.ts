@@ -75,3 +75,20 @@ describe("callState", () => {
     expect(formatClock(65_000)).toBe("1:05");
   });
 });
+
+describe("offer state", () => {
+  const offerTs = "2026-01-01T00:00:00Z";
+  const offer = {
+    caller_name: null, firm: null, instrument: null, price: null, quantity: null,
+    total: null, fees: null, deadline: null, payment: null, history: [],
+  };
+  it("offer.updated sets the offer and a new call resets it", () => {
+    const s = applyCallEvent(beginCall("mic", null), { ts: offerTs, type: "offer.updated", offer }, 0);
+    expect(s.offer).toEqual(offer);
+    expect(beginCall("mic", null).offer).toBeNull();
+  });
+  it("accepts offer events from the socket", () => {
+    expect(parseCallEvent(JSON.stringify({ type: "offer.updated", ts: offerTs, offer }))).not.toBeNull();
+    expect(parseCallEvent(JSON.stringify({ type: "offer.changed", ts: offerTs }))).not.toBeNull();
+  });
+});

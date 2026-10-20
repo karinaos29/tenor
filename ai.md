@@ -39,6 +39,18 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 
 **What M1 showed about routing:** cross-model review works both ways. Opus caught Sonnet's contract-level issues in M0. In M1, Sonnet's independent tests caught Opus's edge cases. Each model checks work it didn't write.
 
+### Who did what in M2 (Used)
+
+| Task | Model | Effort | Result |
+|---|---|---|---|
+| Gemini SDK and TTS API check (thinking config, schema, multi-speaker) | **no subagent**: `uvx` + `grep` on raw docs | — | Two targeted checks were cheaper than a research agent this time. |
+| Scripts, ground truth, number normalizer, extraction rules, LLM contract, offer tracker, session chain, TTS generator | **Opus 5.5** (main session) | session default | The scripts came first, so rules were built against the ground truth. Rules alone reproduce both expected offers. |
+| Offer card, caller strip, transcript highlights, 13 tests | **Sonnet 5.5** subagent, background | medium | 67.1k tokens, 7 tool calls, ~1 min. Reviewed by Opus; no changes needed. |
+| Backend test suite (normalizer, rules incl. negative cases, extractor with a fake LLM, LLM wrapper, tracker, scripts vs. ground truth, session wiring) | **Sonnet 5.5** subagent, background | medium | 108.7k tokens, 17 tool calls, ~3 min, 206 tests, no source bugs found this time. |
+| Real-audio verification | Opus + Deepgram + Gemini | — | Found what tests on text couldn't: Deepgram merged two similar voices into one speaker, misheard "is this Eszter?" as a name, and wrote "a quarter percent" as "025%". Gemini rejected HTTP timeouts under 10 s and its TTS stalled. Each finding is now a fix, a regression test, or a documented follow-up. |
+
+**What M2 showed about routing:** the most valuable "model" step was running the real pipeline on real audio. Five of the M2 bugs only appeared there. Cheap models write good tests against the spec, but only reality tests the spec itself.
+
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
 - **Background, not blocking.** Research and scaffolding ran while the main session kept working.
@@ -62,14 +74,29 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 | Job | Model | Settings | Why | Status |
 |---|---|---|---|---|
 | Speech-to-text, both sides, live | Deepgram **Nova-3** streaming (`/v1/listen`) | interim results, `diarize_model=latest`, endpointing 300 ms | Deepgram's recommendation for multi-speaker audio; measured 305 ms median to interim words. ~$0.0077/min + $0.0020/min diarization (list price) | **Built** (M1) |
-| Pull offer terms and claims from each utterance | `gemini-3.5-flash-lite` | thinking `minimal`, JSON schema output | Runs on every caller utterance, on the "flag within 2 s" path. Cheapest, fastest tier: $0.30 / $2.50 per 1M in/out | Planned (M2) |
+| Offer terms, names, tickers, clear claims (price moves, guarantees, fund fees) | **no model**: rules + number-word normalizer + catalogs | — | ~1 ms per utterance, works without a key; reproduces the full expected offer on both test calls | **Built** (M2) |
+| Fuzzy extraction: company events ("signed a deal"), names rules missed | `gemini-3.1-flash-lite` | thinking `minimal`, Pydantic `response_schema`, 8 s async budget, quotes must match what was said | Only on caller lines with event cues: 2 calls on the 3-minute scam call. Measured 1.3–5.4 s, ~260 tokens in / ~70 out. Chosen over 3.5-flash-lite, which took 8–30 s (see below) | **Built** (M2) |
 | Research agent (looks up firm, ticker, register, news via tools) | `gemini-3.8-flash` | thinking `low`, function calling | Needs reliable multi-step tool use. Flash, not Lite | Planned (M3) |
 | Who is "You" vs. "Caller" | **no model**: loudness per diarized speaker + first-turn rule | — | Deterministic, < 1 ms, explainable; a manual swap overrides it | **Built** (M1) |
+| Voices for the scripted test calls (dev time) | `gemini-3.8-flash-tts`, macOS `say` as fallback | one request per turn, 3 voices, cached per line, 75 s cap + retries | Natural voices for a realistic demo and transcription test. **On 2026-10-20 the service stalled after 12 of 42 lines**, so the committed WAVs use the macOS fallback; one command re-voices them when TTS responds | Partly used (M2) |
 | Pressure-tactic detection | sentence-transformers embeddings + logistic regression (local) | — | No API cost, millisecond latency, works offline, measurable | Planned (M4) |
 | Tactic baseline for the eval | `gemini-3.5-flash-lite` zero-shot | — | The honest comparison: is a trained small classifier better than prompting? | Planned (M4) |
 | Decision memo after hang-up | `gemini-3.8-flash` | thinking `medium` | One call per session. Quality matters more than speed, but it only explains facts already checked | Planned (M5) |
 
-Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TENOR_MODEL_FAST`, `TENOR_MODEL_RESEARCH`, `TENOR_MODEL_MEMO`). **Built** in M0.
+Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TENOR_MODEL_FAST`, `TENOR_MODEL_RESEARCH`, `TENOR_MODEL_MEMO`, `TENOR_LLM_TIMEOUT_S`). **Built** in M0.
+
+### What M2 measured about Gemini (Used)
+Identical structured-output requests, 2026-10-20, from my laptop:
+
+| Model | Latency (n) | Notes |
+|---|---|---|
+| `gemini-3.1-flash-lite` | 1.3, 3.1, 3.7, 5.4 s; one 23.8 s outlier (5) | ~260 input / ~70 output tokens, no thinking tokens |
+| `gemini-3.5-flash-lite` | 8–30 s, mostly server timeouts (6) | |
+| `gemini-3.8-flash` | timed out at 30 s (1) | Planned research model: re-check before M3 |
+
+Two lessons that changed the code:
+1. **A model on the hot path is a liability.** This is why the architecture says "rules first": the offer card never waits for an LLM, and the extraction LLM is an async extra with a fallback. The architecture's "50–500 ms" for the LLM step isn't achievable with these numbers. The rules step achieves ~1 ms.
+2. **Gemini's HTTP timeout is a server deadline with a 10 s minimum.** A 2.5 s `HttpOptions(timeout=…)` made every call fail with 400 INVALID_ARGUMENT. The real budget is now enforced client-side with `asyncio.wait_for`.
 
 ### Why Gemini through Google AI Studio
 - **I already have a billed Google AI Studio key.** One key covers every LLM job, with no new vendor account. The SDK is `google-genai` and reads `GEMINI_API_KEY`.
@@ -80,21 +107,22 @@ Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TE
 
 Prices, IDs, thinking levels and caching limits were checked on ai.google.dev ([models](https://ai.google.dev/gemini-api/docs/models), [pricing](https://ai.google.dev/gemini-api/docs/pricing), [thinking](https://ai.google.dev/gemini-api/docs/thinking), [caching](https://ai.google.dev/gemini-api/docs/caching)) on 2026-10-20.
 
-### Token and latency budget at runtime (Planned, M2+)
-- **Thinking off the hot path.** Thinking tokens are billed as output ($2.50 / 1M on Flash-Lite). Extraction uses `minimal`, Flash-Lite's lowest level and its default.
-- **Send the delta, not the transcript.** Each extraction call gets the new utterance plus a compact running offer state, not the whole call so far. Cost stays flat as the call gets longer.
+### Token and latency budget at runtime
+- **Rules before tokens (Built, M2).** Most utterances never reach an LLM. On the 3-minute scam call, 2 of 12 caller lines did (the "signed a deal" lines).
+- **Thinking off (Built, M2).** Thinking tokens are billed as output. Extraction uses `minimal`, and the measured calls used 0 thinking tokens.
+- **Send the delta, not the transcript (Built, M2).** Each extraction call gets one sentence plus the current instrument (~260 tokens), not the whole call. Cost stays flat as the call gets longer.
 - **Stable prefix first.** Instructions, schema and tool definitions go at the start of every prompt so implicit caching (on by default for Gemini 2.5+) can apply. Honest caveat: the minimum for 3.8 Flash is 4,096 tokens, so the research agent's prompt (tool definitions + call context) is the likely beneficiary. Flash-Lite isn't in Google's minimums table, and the short extraction prompts probably won't cache.
 - **Structured output, no retries.** Responses are validated against the same Pydantic models as the events. A malformed response gives a "couldn't verify" state, not a retry loop.
 - **Prefetch research.** The research agent starts when a firm or ticker is first named, before the caller makes a claim about it, so the answer is often ready when needed.
 - **Log tokens next to latency.** Each LLM stage records input, output and cached tokens from the response's usage data in the same latency log. The eval screen can then show real cost per call, not just this estimate.
 
-**Rough cost of one 15-minute call (estimate, to be replaced with measured numbers in M4).** Assumes ~75 caller utterances × ~800 input / ~150 output tokens for extraction, ~5 research runs × 3 turns × ~3k input / ~500 output tokens, and one memo at ~10k input / ~1.5k output tokens:
+**Rough cost of one 15-minute call (estimate; the extraction row uses M2's measured tokens, the others are still assumptions).** Extraction: ~10 LLM calls × ~260 input / ~70 output tokens. Research: ~5 runs × 3 turns × ~3k / ~500. Memo: ~10k / ~1.5k:
 
 | Stage | Input | Output | Cost |
 |---|---|---|---|
-| Extraction (Flash-Lite) | 60k | 11k | ≈ $0.05 |
+| Extraction (3.1 Flash-Lite, rules do the rest) | 2.6k | 0.7k | ≈ $0.002 |
 | Research (3.8 Flash) | 45k | 7.5k | ≈ $0.06 |
 | Memo (3.8 Flash) | 10k | 1.5k | ≈ $0.01 |
-| **Total** | | | **≈ $0.12 per call** |
+| **Total** | | | **≈ $0.07 per call** |
 
-At these prices, model choice matters more for **latency** (2-second flag target) than for cost. That's the real reason the hot path is on Flash-Lite.
+At these prices, model choice matters more for **latency** (2-second flag target) than for cost. M2 showed that even the fastest tier can take seconds, so the hot path has no model on it at all.

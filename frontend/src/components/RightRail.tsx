@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { OfferCard } from "./OfferCard";
 
 function RailCard({ title, hint, live, children }: { title: string; hint?: string; live?: boolean; children: ReactNode }) {
   const id = `rail-${title.replace(/\W+/g, "-").toLowerCase()}`;
@@ -20,7 +21,7 @@ export function RightRail() {
         <p className="muted">Tenor&apos;s suggestions appear here when there&apos;s something worth saying or checking.</p>
       </RailCard>
       <RailCard title="The offer">
-        <p className="muted">Terms fill in as the caller states them.</p>
+        <OfferCard />
       </RailCard>
       <RailCard title="Claims vs. data">
         <p className="muted">Claims the caller makes are checked against market data here.</p>

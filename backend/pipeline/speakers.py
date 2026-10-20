@@ -10,7 +10,7 @@ Who is "You" (architecture doc: loudness heuristic + first-turn rule):
 3. Manual swap: the user's "Swap speakers" button inverts the labels and locks them.
 
 Consumes: AudioLevel, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap.
-Publishes: UtterancePartial, UtteranceFinal, SpeakersUpdated.
+Publishes: UtterancePartial, UtteranceFinal, SpeakersUpdated, and UtterancesClosed when done.
 """
 
 import math
@@ -28,6 +28,7 @@ from pipeline.events import (
     TranscriptSegment,
     TranscriptUtteranceEnd,
     Utterance,
+    UtterancesClosed,
     UtteranceFinal,
     UtterancePartial,
     Word,
@@ -107,6 +108,7 @@ class SpeakerLabeler:
             elif isinstance(event, TranscriptClosed):
                 self._finalize(include_interim=True)
                 break
+        self.bus.publish(UtterancesClosed())
         self._sub.close()
 
     # --- input handling ---------------------------------------------------------------

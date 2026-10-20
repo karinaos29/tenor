@@ -51,3 +51,16 @@
   .strip__status, .strip__actions { justify-content: flex-start; }
   .transcript { height: 60vh; }
 }
+
+/* Transcript: words that became part of the offer */
+.term { background: none; color: inherit; text-decoration: underline dotted var(--voice-caller); text-underline-offset: 3px; }
+
+/* The offer card */
+.offer { margin: 0; }
+.offer__row { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+.offer__row:first-child { border-top: 0; padding-top: 0; }
+.offer dt { color: var(--muted); font-size: 13px; }
+.offer dd { margin: 0; text-align: right; font-size: 15px; }
+.offer__value--num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.offer__was { color: var(--muted); font-size: 13px; }
+.offer__note { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }

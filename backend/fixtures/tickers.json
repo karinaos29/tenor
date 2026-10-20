@@ -1,0 +1,20 @@
+{
+  "note": "Curated real tickers the extractor can recognize by symbol or name. Names only, no claims. Market data comes from Finnhub (M3).",
+  "tickers": [
+    {"ticker": "VOO", "name": "Vanguard S&P 500 ETF", "aliases": ["Vanguard S&P 500 ETF", "Vanguard S&P 500"]},
+    {"ticker": "SPY", "name": "SPDR S&P 500 ETF Trust", "aliases": ["SPDR S&P 500"]},
+    {"ticker": "VTI", "name": "Vanguard Total Stock Market ETF", "aliases": ["Vanguard Total Stock Market"]},
+    {"ticker": "QQQ", "name": "Invesco QQQ Trust", "aliases": ["Invesco QQQ"]},
+    {"ticker": "AAPL", "name": "Apple", "aliases": ["Apple"]},
+    {"ticker": "MSFT", "name": "Microsoft", "aliases": ["Microsoft"]},
+    {"ticker": "NVDA", "name": "NVIDIA", "aliases": ["NVIDIA", "Nvidia"]},
+    {"ticker": "AMZN", "name": "Amazon", "aliases": ["Amazon"]},
+    {"ticker": "GOOGL", "name": "Alphabet", "aliases": ["Alphabet", "Google"]},
+    {"ticker": "META", "name": "Meta Platforms", "aliases": ["Meta Platforms"]},
+    {"ticker": "TSLA", "name": "Tesla", "aliases": ["Tesla"]},
+    {"ticker": "BRK.B", "name": "Berkshire Hathaway", "aliases": ["Berkshire Hathaway", "Berkshire"]},
+    {"ticker": "JPM", "name": "JPMorgan Chase", "aliases": ["JPMorgan", "JP Morgan"]},
+    {"ticker": "V", "name": "Visa", "aliases": []},
+    {"ticker": "KO", "name": "Coca-Cola", "aliases": ["Coca-Cola", "Coca Cola"]}
+  ]
+}

@@ -145,6 +145,114 @@ class CallEnded(Event):
     detail: str = ""
 
 
+# --- Understanding the call (M2) ---------------------------------------------------
+
+EntityKind = Literal["ticker", "price", "percent", "quantity", "deadline", "firm", "person", "payment", "fee"]
+# heard: said plainly; matched: resolved via a known list (e.g. "Kestrel" -> KSTL);
+# unsure: e.g. spelled letters that match no known ticker.
+Confidence = Literal["heard", "matched", "unsure"]
+
+
+class Entity(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    kind: EntityKind
+    value: str = Field(description="Normalized display value, e.g. 'KSTL', '$0.42', '10,000 shares'")
+    text: str = Field(description="The words as they appear in the utterance text")
+    number: float | None = None
+    unit: str | None = None
+    detail: str | None = Field(default=None, description="Extra context, e.g. the company name for a ticker")
+    utterance_id: str
+    speaker: Role
+    t: float
+    confidence: Confidence = "heard"
+
+
+ClaimStatus = Literal["checking", "verified", "false", "not_found", "unverifiable"]
+
+
+class Claim(BaseModel):
+    """A factual statement by the caller. The LLM may extract it; only data decides its status (M3)."""
+
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    text: str
+    metric: Literal["price_change", "return", "guarantee", "event", "fee", "other"]
+    claimed_value: float | None = None
+    unit: str | None = None
+    period: str | None = None
+    subject: str | None = Field(default=None, description="Ticker or company the claim is about")
+    utterance_id: str
+    status: ClaimStatus = "checking"
+    actual_value: float | None = None
+    source: str | None = None
+    checked_in_ms: float | None = None
+
+
+class Term(BaseModel):
+    """One term of the offer and where it came from."""
+
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    display: str
+    number: float | None = None
+    said: str = Field(description="Words from the transcript (empty for computed terms)")
+    utterance_id: str | None = None
+    t: float | None = None
+    confidence: Confidence = "heard"
+    source: Literal["call", "computed"] = "call"
+
+
+OfferField = Literal["caller_name", "firm", "instrument", "price", "quantity", "total", "fees", "deadline", "payment"]
+
+
+class TermChange(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    field: OfferField
+    old: Term
+    new: Term
+
+
+class Offer(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    caller_name: Term | None = None
+    firm: Term | None = None
+    instrument: Term | None = None
+    price: Term | None = None
+    quantity: Term | None = None
+    total: Term | None = None
+    fees: Term | None = None
+    deadline: Term | None = None
+    payment: Term | None = None
+    history: list[TermChange] = Field(default_factory=list)
+
+
+class EntityDetected(Event):
+    type: Literal["entity.detected"] = "entity.detected"
+    entity: Entity
+
+
+class ClaimExtracted(Event):
+    type: Literal["claim.extracted"] = "claim.extracted"
+    claim: Claim
+
+
+class OfferUpdated(Event):
+    type: Literal["offer.updated"] = "offer.updated"
+    offer: Offer
+
+
+class OfferChanged(Event):
+    """A term the caller already stated changed (e.g. 5,000 -> 10,000 shares)."""
+
+    type: Literal["offer.changed"] = "offer.changed"
+    change: TermChange
+
+
 # --- Bus-internal events (never sent to the browser) ------------------------------
 
 
@@ -190,6 +298,18 @@ class TranscriptClosed(Event):
     type: Literal["transcript.closed"] = "transcript.closed"
 
 
+class UtterancesClosed(Event):
+    """The labeler has finalized its last utterance (end-of-call chain, stage 2)."""
+
+    type: Literal["utterances.closed"] = "utterances.closed"
+
+
+class EntitiesClosed(Event):
+    """The extractor has finished, including pending LLM calls (end-of-call chain, stage 3)."""
+
+    type: Literal["entities.closed"] = "entities.closed"
+
+
 # --- Unions -------------------------------------------------------------------------
 
 # Everything that crosses a WebSocket. TypeScript types are generated from this.
@@ -205,7 +325,9 @@ TenorEvent = Annotated[
     | UtteranceFinal
     | SpeakersUpdated
     | TranscriberStatus
-    | CallEnded,
+    | CallEnded
+    | OfferUpdated
+    | OfferChanged,
     Field(discriminator="type"),
 ]
 

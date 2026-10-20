@@ -232,6 +232,176 @@
       "title": "HealthStatus",
       "type": "object"
     },
+    "Offer": {
+      "properties": {
+        "caller_name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "firm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "instrument": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fees": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "deadline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "payment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Term"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/TermChange"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "caller_name",
+        "firm",
+        "instrument",
+        "price",
+        "quantity",
+        "total",
+        "fees",
+        "deadline",
+        "payment",
+        "history"
+      ],
+      "title": "Offer",
+      "type": "object"
+    },
+    "OfferChanged": {
+      "description": "A term the caller already stated changed (e.g. 5,000 -> 10,000 shares).",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "offer.changed",
+          "default": "offer.changed",
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/TermChange"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "change"
+      ],
+      "title": "OfferChanged",
+      "type": "object"
+    },
+    "OfferUpdated": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "offer.updated",
+          "default": "offer.updated",
+          "type": "string"
+        },
+        "offer": {
+          "$ref": "#/$defs/Offer"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "offer"
+      ],
+      "title": "OfferUpdated",
+      "type": "object"
+    },
     "ServiceStatus": {
       "description": "Whether each external service has a key configured. Never carries the key.",
       "properties": {
@@ -316,6 +486,110 @@
         "locked"
       ],
       "title": "SpeakersUpdated",
+      "type": "object"
+    },
+    "Term": {
+      "description": "One term of the offer and where it came from.",
+      "properties": {
+        "display": {
+          "type": "string"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "said": {
+          "description": "Words from the transcript (empty for computed terms)",
+          "type": "string"
+        },
+        "utterance_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "t": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "confidence": {
+          "default": "heard",
+          "enum": [
+            "heard",
+            "matched",
+            "unsure"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "default": "call",
+          "enum": [
+            "call",
+            "computed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "display",
+        "number",
+        "said",
+        "utterance_id",
+        "t",
+        "confidence",
+        "source"
+      ],
+      "title": "Term",
+      "type": "object"
+    },
+    "TermChange": {
+      "properties": {
+        "field": {
+          "enum": [
+            "caller_name",
+            "firm",
+            "instrument",
+            "price",
+            "quantity",
+            "total",
+            "fees",
+            "deadline",
+            "payment"
+          ],
+          "type": "string"
+        },
+        "old": {
+          "$ref": "#/$defs/Term"
+        },
+        "new": {
+          "$ref": "#/$defs/Term"
+        }
+      },
+      "required": [
+        "field",
+        "old",
+        "new"
+      ],
+      "title": "TermChange",
       "type": "object"
     },
     "TranscriberStatus": {
@@ -452,6 +726,8 @@
           "health.ping": "#/$defs/HealthPing",
           "health.pong": "#/$defs/HealthPong",
           "health.status": "#/$defs/HealthStatus",
+          "offer.changed": "#/$defs/OfferChanged",
+          "offer.updated": "#/$defs/OfferUpdated",
           "speakers.swap": "#/$defs/SpeakersSwap",
           "speakers.updated": "#/$defs/SpeakersUpdated",
           "transcriber.status": "#/$defs/TranscriberStatus",
@@ -496,6 +772,12 @@
         },
         {
           "$ref": "#/$defs/CallEnded"
+        },
+        {
+          "$ref": "#/$defs/OfferUpdated"
+        },
+        {
+          "$ref": "#/$defs/OfferChanged"
         }
       ],
       "title": "TenorEvent"

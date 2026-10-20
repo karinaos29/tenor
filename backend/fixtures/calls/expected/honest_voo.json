@@ -1,0 +1,18 @@
+{
+  "note": "Ground truth for scripts/honest_voo.txt. 'Past returns don't guarantee future results' must NOT become a guarantee claim; the IRA deadline is real (hard honest case).",
+  "offer": {
+    "caller_name": "Tom Becker",
+    "firm": "Riverside Savings Bank",
+    "instrument": "VOO · Vanguard S&P 500 ETF",
+    "price": null,
+    "quantity": null,
+    "total": null,
+    "deadline": "April 15",
+    "payment": null,
+    "fees": "0.25% a year"
+  },
+  "changes": [],
+  "claims": [
+    {"metric": "fee", "claimed_value": 0.03, "unit": "%", "period": "a year", "subject": "VOO"}
+  ]
+}

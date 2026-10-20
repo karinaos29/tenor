@@ -1,0 +1,21 @@
+# Honest call. Fictional local bank (Riverside Savings Bank), real ETF (Vanguard S&P 500 ETF, VOO).
+# Claims are true and stable: VOO tracks the S&P 500; expense ratio 0.03%. Hard honest case: a
+# real deadline (IRA contributions for the previous tax year, April 15) stated without pressure.
+YOU: Hello?
+CALLER: Hello, is this Eszter? This is Tom Becker from Riverside Savings Bank. I'm calling about the review you booked with us last week. Is now a good time?
+YOU: Yes, that's fine.
+CALLER: Great. You mentioned you'd like your savings to grow a bit more than the savings account allows, over the long term.
+YOU: That's right. I don't want anything risky, though.
+CALLER: That makes sense. One option many people look at is an index fund. For example, the Vanguard S&P 500 ETF. The ticker is V O O. It simply tracks the five hundred largest American companies.
+YOU: What does it cost?
+CALLER: The fund's expense ratio is three hundredths of a percent a year, so about thirty cents per thousand dollars invested. Our platform fee is a quarter percent a year.
+YOU: And how much would I need to put in?
+CALLER: There's no minimum with us. Some customers start with a monthly amount, say two hundred dollars, and adjust later.
+YOU: Could it lose money?
+CALLER: Yes, it can go down, sometimes a lot in a bad year. It's meant for money you won't need for at least five years. Past returns don't guarantee future results.
+YOU: I see. Is there any deadline?
+CALLER: Only one, and it's not urgent. If you want a contribution to count toward last year's IRA, the deadline is April fifteenth. Otherwise, there's no rush at all.
+YOU: I'd like to read about it first.
+CALLER: Of course. I'll email you the fund factsheet and our fee schedule today. Take your time, talk it over with family if you like, and call me back whenever you're ready.
+YOU: Thank you, Tom.
+CALLER: You're welcome. Have a nice afternoon.

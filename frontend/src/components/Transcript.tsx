@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { swapSpeakers } from "../lib/callSession";
 import { displayRole, formatClock } from "../lib/callState";
 import type { Utterance } from "../lib/events.gen";
+import { highlightSegments, offerPhrasesFor } from "../lib/highlight";
 import { useCallStore } from "../stores/call";
 
 function TranscriptStatus() {
@@ -34,7 +35,7 @@ type LineVoice = "caller" | "user" | "pending";
 
 const WHO: Record<LineVoice, string> = { caller: "Caller", user: "You", pending: "Speaking…" };
 
-function Line({ u, voice }: { u: Utterance; voice: LineVoice }) {
+function Line({ u, voice, phrases = [] }: { u: Utterance; voice: LineVoice; phrases?: string[] }) {
   const body = (
     <>
       <p className="line__meta">
@@ -42,7 +43,15 @@ function Line({ u, voice }: { u: Utterance; voice: LineVoice }) {
         <span className="line__time numbers">{formatClock(u.t_start * 1000)}</span>
       </p>
       <p className="line__text">
-        {u.text}
+        {voice === "caller" && phrases.length > 0
+          ? highlightSegments(u.text, phrases).map((seg, i) =>
+              seg.mark ? (
+                <mark key={i} className="term" title="Part of the offer">{seg.text}</mark>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )
+          : u.text}
         {voice === "pending" ? "…" : ""}
       </p>
     </>
@@ -56,7 +65,7 @@ function Line({ u, voice }: { u: Utterance; voice: LineVoice }) {
 }
 
 export function Transcript() {
-  const { utterances, userIndices, labelsLocked } = useCallStore();
+  const { utterances, userIndices, labelsLocked, offer } = useCallStore();
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const [away, setAway] = useState(false);
@@ -105,7 +114,7 @@ export function Transcript() {
         {utterances.length === 0 && <p className="muted">Words appear here as people speak.</p>}
         <div role="log" aria-live="polite">
           {finals.map((u) => (
-            <Line key={u.id} u={u} voice={displayRole(u, userIndices)} />
+            <Line key={u.id} u={u} voice={displayRole(u, userIndices)} phrases={offerPhrasesFor(offer, u.id)} />
           ))}
         </div>
         {partials.map((u) => (

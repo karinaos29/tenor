@@ -1,0 +1,7 @@
+{
+  "note": "Fictional firms used in the scripted calls. Never add real firms here.",
+  "firms": [
+    {"name": "Hartwell & Crane", "aliases": ["Hartwell & Crane", "Hartwell and Crane", "Hartwell Crane"], "fictional": true},
+    {"name": "Riverside Savings Bank", "aliases": ["Riverside Savings Bank", "Riverside Savings"], "fictional": true}
+  ]
+}

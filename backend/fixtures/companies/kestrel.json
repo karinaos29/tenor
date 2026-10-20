@@ -1,0 +1,7 @@
+{
+  "ticker": "KSTL",
+  "name": "Kestrel Motors",
+  "aliases": ["Kestrel Motors", "Kestrel"],
+  "fictional": true,
+  "note": "Fictional company for the manipulative test call. Market data fixtures arrive in M3."
+}

@@ -1,0 +1,24 @@
+{
+  "note": "Ground truth for scripts/scam_kstl.txt. Offer and claims are checked by tests (rules only, no audio, no LLM). Claim checks (M3) and tactic labels (M4) extend this file.",
+  "offer": {
+    "caller_name": "Daniel Reeves",
+    "firm": "Hartwell & Crane",
+    "instrument": "KSTL · Kestrel Motors",
+    "price": "$0.42 a share",
+    "quantity": "10,000 shares",
+    "total": "$4,200",
+    "deadline": "Today, 3:00 PM",
+    "payment": "Bank transfer",
+    "fees": null
+  },
+  "changes": [
+    {"field": "quantity", "old": "5,000 shares", "new": "10,000 shares"},
+    {"field": "total", "old": "$2,100", "new": "$4,200"}
+  ],
+  "claims": [
+    {"metric": "price_change", "claimed_value": 40, "unit": "%", "period": "this quarter", "subject": "KSTL"},
+    {"metric": "guarantee", "claimed_value": 100, "unit": "%", "period": "by Christmas", "subject": "KSTL"},
+    {"metric": "guarantee", "claimed_value": null, "subject": "KSTL"},
+    {"metric": "event", "text_contains": "signed a deal with a major carmaker", "subject": "KSTL"}
+  ]
+}

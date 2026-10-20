@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
 
     # Gemini model per job (see ai.md). Swappable without code changes.
-    tenor_model_fast: str = "gemini-3.5-flash-lite"  # per-utterance extraction, hot path
+    # Measured 2026-10-20 (structured output, same prompt): 3.1-flash-lite 1.3-5.4 s,
+    # 3.5-flash-lite 8-30 s with timeouts. See docs/decisions.md.
+    tenor_model_fast: str = "gemini-3.1-flash-lite"  # fuzzy extraction, async, off the hot path
+    tenor_llm_timeout_s: float = 8.0
     tenor_model_research: str = "gemini-3.8-flash"  # research agent with tool calls
     tenor_model_memo: str = "gemini-3.8-flash"  # one memo per call, after hang-up
 

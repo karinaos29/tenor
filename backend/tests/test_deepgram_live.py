@@ -39,3 +39,37 @@ def test_m1_hello_through_real_deepgram():
         (u.speaker, u.text) for u in finals
     ]
     assert events[-1].type == "call.ended" and events[-1].reason == "replay_finished"
+
+
+SCAM = Path(__file__).resolve().parents[1] / "fixtures" / "calls" / "scam_kstl.wav"
+
+
+@pytest.mark.deepgram
+def test_scam_kstl_offer_through_real_deepgram():
+    """Real-time replay of the scripted scam call: speech-to-text must feed the offer tracker correctly."""
+    import json
+
+    key = get_settings().deepgram_api_key
+    if not key:
+        pytest.skip("DEEPGRAM_API_KEY not set")
+    if not SCAM.exists():
+        pytest.skip("fixtures/calls/scam_kstl.wav not generated")
+    want = json.loads((SCAM.parent / "expected" / "scam_kstl.json").read_text())["offer"]
+
+    async def main():
+        sent = []
+
+        async def send(event):
+            sent.append(event)
+
+        session = CallSession(FileSource(SCAM, realtime=True), DeepgramTranscriber(key), send, replay_id="scam_kstl")
+        await asyncio.wait_for(session.run(), 300)
+        return sent
+
+    events = asyncio.run(main())
+    assert events[-1].type == "call.ended"
+    offer = [e for e in events if e.type == "offer.updated"][-1].offer
+    assert offer.instrument.display == want["instrument"]
+    assert offer.price.display == want["price"]
+    assert offer.quantity.display == want["quantity"]
+    assert offer.deadline.display == want["deadline"]

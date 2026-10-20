@@ -27,6 +27,7 @@ from pipeline.events import (
     client_event_adapter,
 )
 from pipeline.latency import record
+from pipeline.llm import LlmClient
 from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
 
@@ -37,6 +38,9 @@ app = FastAPI(title="Tenor", version=VERSION)
 
 # Swappable in tests (fake transcriber, temp replay folder).
 app.state.transcriber_factory = lambda: DeepgramTranscriber(get_settings().deepgram_api_key)
+app.state.llm_factory = lambda: LlmClient(
+    get_settings().gemini_api_key, get_settings().tenor_model_fast, timeout_s=get_settings().tenor_llm_timeout_s
+)
 app.state.replay_dir = Path(__file__).resolve().parents[1] / "fixtures" / "calls"
 
 REPLAY_ID = re.compile(r"^[a-z0-9_]+$")
@@ -140,6 +144,7 @@ async def call_socket(ws: WebSocket) -> None:
         app.state.transcriber_factory(),
         send=lambda event: ws.send_text(event.model_dump_json()),
         replay_id=first.replay_id,
+        llm=app.state.llm_factory(),
     )
     log.info("call %s started (%s)", session.id, first.source)
     run = asyncio.create_task(session.run())
