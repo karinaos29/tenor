@@ -1,0 +1,53 @@
+.live { min-height: 100vh; background: var(--bg); padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.strip {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card);
+  padding: 14px 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+}
+.strip__name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.strip__sub { margin: 2px 0 0; font-size: 13px; }
+.strip__status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; font-size: 16px; }
+.strip__actions { display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 14px; white-space: nowrap; }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: live-dot 1.6s ease-in-out infinite; }
+@keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.live__grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.transcript { position: relative; display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 420px; }
+.transcript__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.transcript__tools { display: flex; align-items: center; gap: 12px; }
+.transcript__set { font-size: 14px; }
+.transcript__status { min-height: 0; }
+.transcript__status p { margin: 10px 0 0; font-size: 15px; }
+.transcript__body { flex: 1; overflow-y: auto; margin-top: 14px; padding-right: 6px; }
+/* Two voices, told apart at a glance: the caller's words sit left on a cool rule;
+   yours sit right in a raised bubble. Voice colors are used nowhere else.
+   Lines still being spoken are neutral until final (interim speaker labels flip). */
+.line { margin-bottom: 14px; max-width: 86%; }
+.line__meta { display: flex; align-items: baseline; gap: 8px; margin: 0 0 3px; font-size: 13px; }
+.line__who { font-weight: 700; letter-spacing: 0.02em; }
+.line__time { color: var(--muted); font-size: 12px; }
+.line__text { margin: 0; font-size: 17px; line-height: 1.5; color: var(--ink); }
+.line--caller { padding: 2px 0 2px 14px; border-left: 3px solid var(--voice-caller); }
+.line--caller .line__who { color: var(--voice-caller); }
+.line--user {
+  margin-left: auto; padding: 10px 14px;
+  background: var(--voice-you-bg); border: 1px solid var(--voice-you-line);
+  border-radius: var(--radius-card) var(--radius-card) 4px var(--radius-card);
+}
+.line--user .line__who { color: var(--voice-you); }
+.line--pending { padding: 2px 0 2px 14px; border-left: 3px dashed var(--line); }
+.line--pending .line__who { color: var(--muted); font-weight: 600; }
+.line--pending .line__text { color: var(--muted); font-style: italic; }
+.jump { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+
+.rail { display: flex; flex-direction: column; gap: 16px; }
+.rail__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.rail__hint { font-size: 13px; }
+.rail__card p { margin: 0; font-size: 15px; }
+
+@media (max-width: 899px) {
+  .live__grid { grid-template-columns: 1fr; }
+  .strip { grid-template-columns: 1fr; }
+  .strip__status, .strip__actions { justify-content: flex-start; }
+  .transcript { height: 60vh; }
+}

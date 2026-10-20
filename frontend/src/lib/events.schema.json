@@ -1,5 +1,156 @@
 {
+  "title": "TenorWire",
+  "description": "Every type that crosses the wire. Generated root; import the member types.",
+  "type": "object",
+  "properties": {
+    "event": {
+      "$ref": "#/$defs/TenorEvent"
+    },
+    "replayList": {
+      "$ref": "#/$defs/ReplayList"
+    }
+  },
+  "required": [
+    "event",
+    "replayList"
+  ],
   "$defs": {
+    "CallEnded": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "call.ended",
+          "default": "call.ended",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "replay_finished",
+            "error"
+          ],
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "reason",
+        "detail"
+      ],
+      "title": "CallEnded",
+      "type": "object"
+    },
+    "CallStart": {
+      "description": "Client -> server, first message on /ws/call.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "call.start",
+          "default": "call.start",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "mic",
+            "replay"
+          ],
+          "type": "string"
+        },
+        "replay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "source",
+        "replay_id"
+      ],
+      "title": "CallStart",
+      "type": "object"
+    },
+    "CallStarted": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "call.started",
+          "default": "call.started",
+          "type": "string"
+        },
+        "call_id": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "mic",
+            "replay"
+          ],
+          "type": "string"
+        },
+        "replay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "call_id",
+        "source",
+        "replay_id"
+      ],
+      "title": "CallStarted",
+      "type": "object"
+    },
+    "CallStop": {
+      "description": "Client -> server: the user hung up / pressed End call.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "call.stop",
+          "default": "call.stop",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "type"
+      ],
+      "title": "CallStop",
+      "type": "object"
+    },
     "HealthPing": {
       "description": "Client -> server. `client_sent_ms` is the client's clock, echoed back.",
       "properties": {
@@ -105,26 +256,284 @@
       ],
       "title": "ServiceStatus",
       "type": "object"
+    },
+    "SpeakersSwap": {
+      "description": "Client -> server: the user says the You/Caller labels are the wrong way round.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "speakers.swap",
+          "default": "speakers.swap",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "type"
+      ],
+      "title": "SpeakersSwap",
+      "type": "object"
+    },
+    "SpeakersUpdated": {
+      "description": "Which diarized speakers are the user (diarization can split one voice in two).\nEveryone else is the caller.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "speakers.updated",
+          "default": "speakers.updated",
+          "type": "string"
+        },
+        "user_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "enum": [
+            "first_turn",
+            "loudness",
+            "manual"
+          ],
+          "type": "string"
+        },
+        "locked": {
+          "description": "True after a manual swap: automatic relabeling stops",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "user_indices",
+        "reason",
+        "locked"
+      ],
+      "title": "SpeakersUpdated",
+      "type": "object"
+    },
+    "TranscriberStatus": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "transcriber.status",
+          "default": "transcriber.status",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "connecting",
+            "live",
+            "reconnecting",
+            "unavailable"
+          ],
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "state",
+        "detail"
+      ],
+      "title": "TranscriberStatus",
+      "type": "object"
+    },
+    "Utterance": {
+      "description": "One speaker turn. Times are seconds from the start of the call.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "speaker": {
+          "description": "Role when the utterance was emitted; the UI relabels from speakers.updated",
+          "enum": [
+            "caller",
+            "user"
+          ],
+          "type": "string"
+        },
+        "speaker_index": {
+          "description": "Diarized speaker number from speech-to-text",
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        },
+        "t_start": {
+          "type": "number"
+        },
+        "t_end": {
+          "type": "number"
+        },
+        "is_final": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "speaker",
+        "speaker_index",
+        "text",
+        "t_start",
+        "t_end",
+        "is_final"
+      ],
+      "title": "Utterance",
+      "type": "object"
+    },
+    "UtteranceFinal": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "utterance.final",
+          "default": "utterance.final",
+          "type": "string"
+        },
+        "utterance": {
+          "$ref": "#/$defs/Utterance"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "utterance"
+      ],
+      "title": "UtteranceFinal",
+      "type": "object"
+    },
+    "UtterancePartial": {
+      "description": "Words so far in the current turn; replaced by later partials and finally by utterance.final.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "utterance.partial",
+          "default": "utterance.partial",
+          "type": "string"
+        },
+        "utterance": {
+          "$ref": "#/$defs/Utterance"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "utterance"
+      ],
+      "title": "UtterancePartial",
+      "type": "object"
+    },
+    "TenorEvent": {
+      "discriminator": {
+        "mapping": {
+          "call.ended": "#/$defs/CallEnded",
+          "call.start": "#/$defs/CallStart",
+          "call.started": "#/$defs/CallStarted",
+          "call.stop": "#/$defs/CallStop",
+          "health.ping": "#/$defs/HealthPing",
+          "health.pong": "#/$defs/HealthPong",
+          "health.status": "#/$defs/HealthStatus",
+          "speakers.swap": "#/$defs/SpeakersSwap",
+          "speakers.updated": "#/$defs/SpeakersUpdated",
+          "transcriber.status": "#/$defs/TranscriberStatus",
+          "utterance.final": "#/$defs/UtteranceFinal",
+          "utterance.partial": "#/$defs/UtterancePartial"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/HealthStatus"
+        },
+        {
+          "$ref": "#/$defs/HealthPing"
+        },
+        {
+          "$ref": "#/$defs/HealthPong"
+        },
+        {
+          "$ref": "#/$defs/CallStart"
+        },
+        {
+          "$ref": "#/$defs/CallStop"
+        },
+        {
+          "$ref": "#/$defs/SpeakersSwap"
+        },
+        {
+          "$ref": "#/$defs/CallStarted"
+        },
+        {
+          "$ref": "#/$defs/UtterancePartial"
+        },
+        {
+          "$ref": "#/$defs/UtteranceFinal"
+        },
+        {
+          "$ref": "#/$defs/SpeakersUpdated"
+        },
+        {
+          "$ref": "#/$defs/TranscriberStatus"
+        },
+        {
+          "$ref": "#/$defs/CallEnded"
+        }
+      ],
+      "title": "TenorEvent"
+    },
+    "ReplayInfo": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "duration_s": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "duration_s"
+      ],
+      "title": "ReplayInfo",
+      "type": "object"
+    },
+    "ReplayList": {
+      "properties": {
+        "replays": {
+          "items": {
+            "$ref": "#/$defs/ReplayInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "replays"
+      ],
+      "title": "ReplayList",
+      "type": "object"
     }
-  },
-  "discriminator": {
-    "mapping": {
-      "health.ping": "#/$defs/HealthPing",
-      "health.pong": "#/$defs/HealthPong",
-      "health.status": "#/$defs/HealthStatus"
-    },
-    "propertyName": "type"
-  },
-  "oneOf": [
-    {
-      "$ref": "#/$defs/HealthStatus"
-    },
-    {
-      "$ref": "#/$defs/HealthPing"
-    },
-    {
-      "$ref": "#/$defs/HealthPong"
-    }
-  ],
-  "title": "TenorEvent"
+  }
 }

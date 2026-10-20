@@ -26,16 +26,31 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 | Review of Sonnet's output | Opus (main session) | session default | Cheap models write code that works, so the expensive model reviews for contract quality. It caught three things, fixed in ~10 min: (1) the generated TS types were noisy (`Ts1`, `Type2`, loose `[k: string]: unknown`), fixed at the source by dropping Pydantic field titles and setting `additionalProperties=false`; the stricter types then caught two unsafe casts, so parsing moved to the socket boundary; (2) the first ping waited 5 s, so the response time showed late; (3) services said "Checking…" while offline, changed to "Not checked". |
 | Visual check (light/dark, 1280/900 px, offline and recovery), final test run, commit | Opus (main session) | session default | Short, and needs judgment on the design rules. |
 
+### Who did what in M1 (Used)
+
+| Task | Model | Effort | Result |
+|---|---|---|---|
+| Deepgram streaming research (model, diarization params, KeepAlive, pricing) | **Haiku 5.5** subagent | low | 68.6k tokens, 12 tool calls, 45 s. This time it read **raw page text with `curl`**, not a summarizer (lesson from M0). I re-checked the one surprising string (`diarize_model=latest`) in its saved raw HTML. It was right. |
+| Architecture .docx → `docs/architecture.md` | **no model**: `pandoc` | — | Zero tokens. A converter does this better than any model. |
+| Plan, events, bus, transcriber, speaker labeler, session, gateway, test clip | **Opus 5.5** (main session) | session default | The correctness-critical core. Running the real replay early found 4 bugs that only real audio shows (a voice split into two speakers, a leading-word mislabel, interim label flips, the fast-replay data loss). |
+| Frontend: dark Hiya theme, Start/Live screens, AudioWorklet capture, call socket, 36 tests | **Sonnet 5.5** subagent, background | medium | 96.3k tokens, 16 tool calls, ~4 min, all checks passing on its first report. Ran in parallel with my backend work. |
+| Backend test suite (bus, sources, transcriber against a fake Deepgram server, labeler, gateway, opt-in live test) | **Sonnet 5.5** subagent, background | medium | 95.5k tokens, 12 tool calls, ~4.4 min, 79 tests. Told to **report bugs, not patch around them**: it found 2 real bugs in my (Opus) code, held as strict xfails until I fixed them. |
+| Review of Sonnet's frontend + transcript restyle you asked for | Opus | session default | Checked the worklet buffer handling and the socket lifecycle. Restyled the transcript with voice tokens (contrast computed, not eyeballed). |
+
+**What M1 showed about routing:** cross-model review works both ways. Opus caught Sonnet's contract-level issues in M0. In M1, Sonnet's independent tests caught Opus's edge cases. Each model checks work it didn't write.
+
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
 - **Background, not blocking.** Research and scaffolding ran while the main session kept working.
 - **Verify the expensive-to-be-wrong facts, trust the rest.** Model IDs and prices were checked against raw docs. Routine things (package versions) are left to `npm install` / `uv add`.
 - **Targeted reads.** I extracted only the relevant passages of the docs pages (models, pricing, thinking, caching) instead of loading whole pages.
-- **Generated types.** TypeScript event types come from the Pydantic models (`npm run gen:types`), so no model writes them twice and they can't drift. A test enforces this.
+- **Generated types.** TypeScript event types come from the Pydantic models (`npm run gen:types`), so no model writes them twice and they can't drift. A test enforces this. In M1 they caught every stale use of a renamed field (`user_index` → `user_indices`) at typecheck time.
+- **Tools before models.** `pandoc` for document conversion, `curl` + `grep` for exact strings, `say` for test audio. A model only where judgment is needed.
+- **Disjoint files for parallel agents.** The frontend agent touched only `frontend/`, the test agent only `backend/tests/`, and I touched the source. No merge conflicts, no re-reading each other's work.
 
 ### Routing plan for the next milestones (Planned)
-- **M1 Hear:** Opus for the audio path (mic capture, Deepgram streaming, speaker labels), where the risk is highest. Sonnet for the transcript UI from the `tenor-ui` spec.
-- **M2 to M3:** Opus for the event bus and the claim-check arithmetic. Sonnet for provider adapters and fixtures once the interface is fixed.
+- **M2 Understand:** Opus for the extraction contract (what counts as a claim; regex-first, Gemini only for fuzzy cases) and the offer state machine. Sonnet for the offer card UI and tests. The two scripted calls generated with tools, not a model.
+- **M3:** Opus for the claim-check arithmetic and suggestion ranking. Sonnet for provider adapters and fixtures once the interface is fixed.
 - **M4:** Haiku or Sonnet to summarize eval runs and draft labeled utterances for me to review. Opus for the metrics and the classifier-vs-LLM comparison.
 
 ---
@@ -46,9 +61,10 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 
 | Job | Model | Settings | Why | Status |
 |---|---|---|---|---|
-| Speech-to-text, both sides, live | Deepgram streaming | interim results, diarization | Documented interim results and speaker diarization, both needed for live labels | Planned (M1) |
+| Speech-to-text, both sides, live | Deepgram **Nova-3** streaming (`/v1/listen`) | interim results, `diarize_model=latest`, endpointing 300 ms | Deepgram's recommendation for multi-speaker audio; measured 305 ms median to interim words. ~$0.0077/min + $0.0020/min diarization (list price) | **Built** (M1) |
 | Pull offer terms and claims from each utterance | `gemini-3.5-flash-lite` | thinking `minimal`, JSON schema output | Runs on every caller utterance, on the "flag within 2 s" path. Cheapest, fastest tier: $0.30 / $2.50 per 1M in/out | Planned (M2) |
 | Research agent (looks up firm, ticker, register, news via tools) | `gemini-3.8-flash` | thinking `low`, function calling | Needs reliable multi-step tool use. Flash, not Lite | Planned (M3) |
+| Who is "You" vs. "Caller" | **no model**: loudness per diarized speaker + first-turn rule | — | Deterministic, < 1 ms, explainable; a manual swap overrides it | **Built** (M1) |
 | Pressure-tactic detection | sentence-transformers embeddings + logistic regression (local) | — | No API cost, millisecond latency, works offline, measurable | Planned (M4) |
 | Tactic baseline for the eval | `gemini-3.5-flash-lite` zero-shot | — | The honest comparison: is a trained small classifier better than prompting? | Planned (M4) |
 | Decision memo after hang-up | `gemini-3.8-flash` | thinking `medium` | One call per session. Quality matters more than speed, but it only explains facts already checked | Planned (M5) |

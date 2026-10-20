@@ -4,7 +4,7 @@ A live copilot for high-pressure investment sales calls. Put the call on speaker
 
 Prototype for the Hiya Voice AI Challenge. No real telephony: microphone input and recorded-call replay only.
 
-> **Status: M0 (skeleton).** The backend and frontend run and talk over a health-check WebSocket. Milestones M1–M5 are in [`docs/milestones/`](docs/milestones/).
+> **Status: M1 (Hear).** Live transcript from the laptop mic or a recorded call, with "You" and "Caller" labels. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Run
 
@@ -26,7 +26,13 @@ Frontend (from `frontend/`, first time `npm install`):
 npm run dev
 ```
 
-Open http://localhost:5173. The Connection card shows whether the backend is reachable, the round-trip time, and which API keys are set.
+Open http://localhost:5173. The Start screen shows which services are ready. Press **Replay a test call** to watch a recorded call transcribe live, or tick the consent box, check the microphone, and press **Start listening** with a phone call on speaker.
+
+Replay a recorded call without the browser (same pipeline, prints the transcript and latencies), from `backend/`:
+
+```bash
+uv run python -m audio.replay fixtures/calls/m1_hello.wav
+```
 
 ## Test
 
@@ -36,10 +42,17 @@ npm run test           # frontend/
 npm run typecheck      # frontend/
 ```
 
+Opt-in test against the real Deepgram API (needs `DEEPGRAM_API_KEY`, takes ~40 s), from `backend/`:
+
+```bash
+uv run pytest -m deepgram
+```
+
 After changing an event model in `backend/pipeline/events.py`, regenerate the TypeScript types with `npm run gen:types` (frontend/). A backend test fails until you do.
 
 ## Docs
 
+- [`docs/architecture.md`](docs/architecture.md): components, events, UI, milestones
 - [`CLAUDE.md`](CLAUDE.md): rules and stack
 - [`docs/decisions.md`](docs/decisions.md): decisions log (what, why, alternative)
 - [`docs/milestones/`](docs/milestones/): one write-up per milestone

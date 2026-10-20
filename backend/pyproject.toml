@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "numpy>=2.5.4",
 ]
 
 [dependency-groups]
@@ -22,3 +23,5 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+addopts = "-m 'not deepgram'"
+markers = ["deepgram: hits the real Deepgram API (needs DEEPGRAM_API_KEY); run with -m deepgram"]

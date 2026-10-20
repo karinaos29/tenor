@@ -8,7 +8,9 @@ import json
 
 from pydantic.json_schema import GenerateJsonSchema
 
-from pipeline.events import tenor_event_adapter
+from pydantic import TypeAdapter
+
+from pipeline.events import REST_MODELS, tenor_event_adapter
 
 
 class _NoFieldTitles(GenerateJsonSchema):
@@ -19,9 +21,24 @@ class _NoFieldTitles(GenerateJsonSchema):
 
 
 def event_schema() -> dict:
-    schema = tenor_event_adapter.json_schema(mode="serialization", schema_generator=_NoFieldTitles)
-    schema["title"] = "TenorEvent"
-    return schema
+    """One root object referencing every wire type, so json2ts emits all of them."""
+    union = tenor_event_adapter.json_schema(mode="serialization", schema_generator=_NoFieldTitles)
+    defs = union.pop("$defs")
+    defs["TenorEvent"] = {**union, "title": "TenorEvent"}
+    properties = {"event": {"$ref": "#/$defs/TenorEvent"}}
+    for model in REST_MODELS:
+        extra = TypeAdapter(model).json_schema(mode="serialization", schema_generator=_NoFieldTitles)
+        defs.update(extra.pop("$defs", {}))
+        defs[model.__name__] = extra
+        properties[model.__name__[0].lower() + model.__name__[1:]] = {"$ref": f"#/$defs/{model.__name__}"}
+    return {
+        "title": "TenorWire",
+        "description": "Every type that crosses the wire. Generated root; import the member types.",
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "$defs": defs,
+    }
 
 
 if __name__ == "__main__":

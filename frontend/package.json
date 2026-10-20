@@ -12,9 +12,10 @@
     "gen:types": "uv --directory ../backend run --quiet python -m app.schema_export > src/lib/events.schema.json && json2ts -i src/lib/events.schema.json -o src/lib/events.gen.ts --additionalProperties=false --bannerComment \"/* Generated from backend/pipeline/events.py by npm run gen:types. Do not edit. */\""
   },
   "dependencies": {
-    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
-    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/nunito-sans": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "framer-motion": "^14.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.0.15"

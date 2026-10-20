@@ -1,0 +1,55 @@
+import { useEffect, useState } from "react";
+import { endCall, newCall } from "../lib/callSession";
+import { formatClock } from "../lib/callState";
+import { useCallStore } from "../stores/call";
+
+export function CallStrip() {
+  const { phase, source, replayTitle, startedAtMs, endedAtMs } = useCallStore();
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (phase !== "live") return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  const sourceText = source === "replay" ? `Replay · ${replayTitle ?? "test call"}` : "Microphone";
+  const elapsed = startedAtMs === null ? 0 : (phase === "live" ? now : (endedAtMs ?? now)) - startedAtMs;
+  const done = phase === "ended" || phase === "lost";
+
+  return (
+    <header className="strip">
+      <div className="strip__caller">
+        <p className="strip__name">Unknown caller</p>
+        <p className="muted strip__sub">Name and firm fill in as the caller says them</p>
+      </div>
+
+      <div className="strip__status">
+        {phase === "live" && (
+          <>
+            <span className="live-dot" aria-hidden="true" />
+            <span>Listening</span>
+            <span className="numbers">{formatClock(elapsed)}</span>
+          </>
+        )}
+        {phase === "connecting" && <span className="muted">Connecting…</span>}
+        {done && (
+          <span>
+            {phase === "ended" ? "Call ended" : "Call lost"} · <span className="numbers">{formatClock(elapsed)}</span>
+          </span>
+        )}
+        <span className="muted">{sourceText}</span>
+      </div>
+
+      <div className="strip__actions">
+        <span className="pill muted">Risk · not scored yet</span>
+        {done ? (
+          <button className="btn" onClick={newCall}>New call</button>
+        ) : (
+          <button className="btn btn--secondary" onClick={endCall}>End call</button>
+        )}
+      </div>
+    </header>
+  );
+}

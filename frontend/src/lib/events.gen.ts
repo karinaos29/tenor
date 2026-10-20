@@ -1,7 +1,26 @@
 /* Generated from backend/pipeline/events.py by npm run gen:types. Do not edit. */
 
-export type TenorEvent = HealthStatus | HealthPing | HealthPong;
+export type TenorEvent =
+  | HealthStatus
+  | HealthPing
+  | HealthPong
+  | CallStart
+  | CallStop
+  | SpeakersSwap
+  | CallStarted
+  | UtterancePartial
+  | UtteranceFinal
+  | SpeakersUpdated
+  | TranscriberStatus
+  | CallEnded;
 
+/**
+ * Every type that crosses the wire. Generated root; import the member types.
+ */
+export interface TenorWire {
+  event: TenorEvent;
+  replayList: ReplayList;
+}
 /**
  * Server -> client, sent once when the health socket opens.
  */
@@ -39,4 +58,99 @@ export interface HealthPong {
    * Server time spent handling the ping, in ms
    */
   server_ms: number;
+}
+/**
+ * Client -> server, first message on /ws/call.
+ */
+export interface CallStart {
+  ts: string;
+  type: "call.start";
+  source: "mic" | "replay";
+  replay_id: string | null;
+}
+/**
+ * Client -> server: the user hung up / pressed End call.
+ */
+export interface CallStop {
+  ts: string;
+  type: "call.stop";
+}
+/**
+ * Client -> server: the user says the You/Caller labels are the wrong way round.
+ */
+export interface SpeakersSwap {
+  ts: string;
+  type: "speakers.swap";
+}
+export interface CallStarted {
+  ts: string;
+  type: "call.started";
+  call_id: string;
+  source: "mic" | "replay";
+  replay_id: string | null;
+}
+/**
+ * Words so far in the current turn; replaced by later partials and finally by utterance.final.
+ */
+export interface UtterancePartial {
+  ts: string;
+  type: "utterance.partial";
+  utterance: Utterance;
+}
+/**
+ * One speaker turn. Times are seconds from the start of the call.
+ */
+export interface Utterance {
+  id: string;
+  /**
+   * Role when the utterance was emitted; the UI relabels from speakers.updated
+   */
+  speaker: "caller" | "user";
+  /**
+   * Diarized speaker number from speech-to-text
+   */
+  speaker_index: number;
+  text: string;
+  t_start: number;
+  t_end: number;
+  is_final: boolean;
+}
+export interface UtteranceFinal {
+  ts: string;
+  type: "utterance.final";
+  utterance: Utterance;
+}
+/**
+ * Which diarized speakers are the user (diarization can split one voice in two).
+ * Everyone else is the caller.
+ */
+export interface SpeakersUpdated {
+  ts: string;
+  type: "speakers.updated";
+  user_indices: number[];
+  reason: "first_turn" | "loudness" | "manual";
+  /**
+   * True after a manual swap: automatic relabeling stops
+   */
+  locked: boolean;
+}
+export interface TranscriberStatus {
+  ts: string;
+  type: "transcriber.status";
+  state: "connecting" | "live" | "reconnecting" | "unavailable";
+  detail: string;
+}
+export interface CallEnded {
+  ts: string;
+  type: "call.ended";
+  reason: "user" | "replay_finished" | "error";
+  detail: string;
+}
+export interface ReplayList {
+  replays: ReplayInfo[];
+}
+export interface ReplayInfo {
+  id: string;
+  title: string;
+  duration_s: number;
 }

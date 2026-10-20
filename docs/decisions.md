@@ -58,3 +58,55 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 - **Decision:** Dev dependency `httpx2` instead of `httpx`.
 - **Why:** The installed Starlette warns that `httpx` with its `TestClient` is deprecated in favor of `httpx2`.
 - **Alternative:** Pin `httpx` and live with the warning.
+
+---
+
+### 2026-10-20 · M1 · Event bus and a minimal replay pulled into M1
+- **Decision:** `pipeline/bus.py` and `FileSource` + one short test call (`m1_hello.wav`) ship in M1, although the plan lists them under M2.
+- **Why:** M1 already has three components (transcriber → labeler → panel), and the rule is that components talk only through the bus. The milestone acceptance criteria also require every demo to work on replay. M2 now just adds subscribers and the two full scripted calls.
+- **Alternative:** Direct calls in M1, refactored onto a bus in M2. That would be work done twice and would break the rule for a day.
+
+### 2026-10-20 · M1 · Bus: one bounded queue per subscriber, drop oldest
+- **Decision:** `publish()` never blocks. Each subscriber has its own queue (1000 events); on overflow the oldest event is dropped and logged.
+- **Why:** A slow consumer (the future research agent) must never delay a fast one (the transcript).
+- **Alternative:** One shared queue, or blocking publish. Both let one slow stage stall the call.
+
+### 2026-10-20 · M1 · Deepgram Nova-3 over a raw WebSocket
+- **Decision:** `wss://api.deepgram.com/v1/listen` with `model=nova-3`, `diarize_model=latest`, `interim_results`, `endpointing=300`, `utterance_end_ms=1000`, `smart_format`, through the `websockets` library (already installed), not the Deepgram SDK.
+- **Why:** Deepgram recommends Nova-3 for multi-speaker audio. Its newer Flux model (on `/v2/listen`) is built for voice-agent turn-taking, and its docs don't document diarization. `diarize_model=latest` is the current switch (`diarize=true` is deprecated). With the raw socket I control every timeout, the KeepAlive (every 4 s of silence; Deepgram closes at 10 s), reconnects (3, with backoff, timestamps re-based) and the fallback states. Checked on developers.deepgram.com on 2026-10-20.
+- **Alternative:** The Deepgram Python SDK: less code, but its reconnect and timeout behavior is harder to see and test.
+
+### 2026-10-20 · M1 · 80 ms frames of 16 kHz linear16
+- **Decision:** Every audio source emits 1280-sample (2560-byte) frames. The browser downsamples in an AudioWorklet.
+- **Why:** Inside the architecture's 20–100 ms range, and Deepgram's documented recommendation. One format means mic and replay share the pipeline byte for byte.
+- **Alternative:** MediaRecorder webm/opus: simpler in the browser, but chunkier latency and a different path from replay.
+
+### 2026-10-20 · M1 · Browser audio processing off
+- **Decision:** `getUserMedia` with `echoCancellation`, `noiseSuppression` and `autoGainControl` all `false`.
+- **Why:** AGC would level out exactly the loudness difference the speaker labeler uses (you near the mic, the caller on a phone speaker). Noise suppression can treat speakerphone audio as noise. Echo cancellation has nothing to cancel: the laptop plays no far-end audio.
+- **Alternative:** Browser defaults. Revisit if real speakerphone tests show noise problems.
+
+### 2026-10-20 · M1 · Speaker labels: each diarized speaker labeled on its own
+- **Decision:** The labeler (not the transcriber) publishes `utterance.*`. `speakers.updated` carries a list, `user_indices`. After 2 s of speech from at least two speakers with a gap of 3 dB or more, every speaker is classified against the loudness midpoint (±1 dB hysteresis). A manual swap inverts and locks, and later speakers are classified against the two hand-labeled groups. Single-word speaker flips are smoothed. Partial lines show no role ("Speaking…") until final.
+- **Why:** The first real replay showed Deepgram splitting one voice into two speaker numbers (0 and 2) and giving the caller's first word to the previous speaker. A single "user index" would have relabeled the opening "Hello?" as the caller. Interim speaker numbers also flip before the final result.
+- **Alternative:** One user index ("the loudest speaker"): simpler, but wrong on exactly those cases.
+
+### 2026-10-20 · M1 · Live audio drops, files wait
+- **Decision:** For real-time sources (mic), the 5 s audio buffer drops the oldest frame when full. For files, the pump waits (backpressure). The replay CLI always plays in real time.
+- **Why:** A live call can't pause, but a file can. A "fast" replay lost most of the call: Deepgram's live API transcribes at about real-time speed, so faster input only stalls the end.
+- **Alternative:** Batch (pre-recorded) API for fast evaluation runs. Possibly in M4.
+
+### 2026-10-20 · M1 · Test call generated with macOS voices
+- **Decision:** `fixtures/calls/make_m1_clip.py` builds `m1_hello.wav` from two `say` voices. The caller is band-limited to 300–3400 Hz and 8 dB quieter, like a phone on speaker.
+- **Why:** Free, reproducible, scripted exactly, and it exercises the loudness heuristic. Fictional firm and ticker only.
+- **Alternative:** A human recording: more realistic, not reproducible. Still an option for the M2 scripted calls.
+
+### 2026-10-20 · M1 · Dark Hiya-inspired theme
+- **Decision:** Dark only: deep indigo surfaces, Hiya-like violet as the single accent, a purple→cyan gradient only on brand moments (wordmark, Start headline). Plus Jakarta Sans (display), Nunito Sans (body), IBM Plex Mono (numbers). The transcript has its own voice tokens (cyan rule for the caller, raised bubble for you). All text is at least 5.4:1 contrast.
+- **Why:** Your call, with Hiya's Branded Call page as the reference. The calm rules (one accent, severity always with a text label, motion only for news) still hold.
+- **Alternative:** Hiya styling on the Start screen only, or both themes restyled.
+
+### 2026-10-20 · M1 · Generated types: one root object
+- **Decision:** `schema_export` emits a root `TenorWire` object referencing `TenorEvent` and the REST payloads (`ReplayList`).
+- **Why:** json-schema-to-typescript 16 ignores `--unreachableDefinitions`, so REST models not referenced from the event union weren't generated. A root that references everything makes them all reachable.
+- **Alternative:** Hand-writing the REST types. Not allowed by the rules.

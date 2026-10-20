@@ -1,19 +1,18 @@
 :root {
-  --bg: #EEF0EC; --surface: #FFFFFF; --sunk: #F6F7F4;
-  --ink: #14181E; --muted: #5C6470; --line: #D9DDD6;
-  --accent: #2E47B0;
-  --danger: #B3261E; --warn: #A35F00; --ok: #1E7349;
-  --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
+  --bg: #0E0B1F; --surface: #17132F; --sunk: #120F27;
+  --ink: #F3F1FA; --muted: #A9A3C2; --line: #2C2650;
+  --accent: #7346F5;
+  --accent-ink: #A08BFF;
+  --danger: #FF7B71; --warn: #F2AC45; --ok: #62CC95;
+  --brand-gradient: linear-gradient(90deg, #A07BFF, #22C3EE);
+  --bg-wash: radial-gradient(120% 90% at 85% 0%, #3A1A8C 0%, #1B1046 45%, #0E0B1F 80%);
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Nunito Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --voice-caller: #7CC6DA;    /* transcript: caller label + rule */
+  --voice-you: #D9D3F0;       /* transcript: "You" label */
+  --voice-you-bg: #251E4D;    /* transcript: your bubble */
+  --voice-you-line: #3A3170;
   --radius-card: 14px; --radius-control: 9px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0F1216; --surface: #171B21; --sunk: #12161B;
-    --ink: #E6E9ED; --muted: #99A1AB; --line: #2A3038;
-    --accent: #93A6FF;
-    --danger: #FF7B71; --warn: #F2AC45; --ok: #62CC95;
-  }
 }
