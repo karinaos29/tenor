@@ -98,7 +98,7 @@ def test_render_escapes_and_includes_titles_and_times(memo):
         "sections": [MemoSection(id="x", title="Sec <i>", items=[MemoItem(text="a & b <script>", detail="<d>", t=65.0)], empty="e")],
     })
     h = render_html(evil)
-    assert "<script>" not in h and "&lt;script&gt;" in h and "a &amp; b" in h and "&lt;b&gt;Hi" in h and "(1:05)" in h
+    assert "<script>" not in h and "&lt;script&gt;" in h and "a &amp; b" in h and "&lt;b&gt;Hi" in h and "at 1:05" in h
     t = render_text(evil)
     assert "SEC <I>" in t and "[1:05]" in t
     full = render_text(memo)
