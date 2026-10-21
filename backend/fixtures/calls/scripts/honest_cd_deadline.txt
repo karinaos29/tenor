@@ -1,0 +1,20 @@
+# Honest call (HARD). Fictional bank (Halden Ridge Savings Bank). A real deadline (Friday) stated calmly, with documents offered and no pressure. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, is this Eszter? This is Maria Lund from Halden Ridge Savings Bank. You asked us about certificates of deposit last month, so I'm calling to follow up.
+YOU: Yes, I remember. Is it about the rates?
+CALLER: It is. We have a one-year certificate offering a fixed rate. The current rate ends this Friday, the twenty-fourth, so if you're interested, there's time to think about it.
+YOU: Friday? That's soon. How much would I need to deposit?
+CALLER: The minimum is one thousand dollars. You can choose any amount above that, and the money stays in the certificate for twelve months.
+YOU: What happens if I need the money earlier?
+CALLER: There's an early withdrawal charge, which is written in the account terms. I'll send you that document along with the rate sheet.
+YOU: Could the rate change before Friday?
+CALLER: The rate on the sheet is fixed until the offer ends. After Friday, the bank may publish a new rate, which might be higher or lower.
+YOU: That's clear. Are the deposits protected if the bank fails?
+CALLER: Yes, deposits at Halden Ridge are insured by the government up to the legal limit per depositor. I'll include that in the information pack.
+YOU: Thank you. I'd like to read everything before I decide.
+CALLER: Of course. Take your time. You're welcome to talk it over with your family or your adviser first.
+YOU: Will you post the documents or email them?
+CALLER: Either is fine. I'll email the rate sheet today, and I can post a paper copy as well if you prefer.
+YOU: Email is fine. What's the best number to call you back on?
+CALLER: The branch number is on the letter we sent you. Please call whenever you're ready, and there's no obligation.

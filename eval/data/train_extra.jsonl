@@ -1,0 +1,130 @@
+{"text": "Hello, is this Eszter?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Good morning, Mrs. Kovacs.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Is now a good time?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Thanks for picking up.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Understood.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Of course.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Certainly, no problem.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "That makes sense.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Sure, go ahead.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Thank you for your time.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Have a lovely afternoon.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Goodbye for now.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Take care.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I'll call back Thursday.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Would Tuesday morning suit you?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Let me confirm your address.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Is that Maple Street, number twelve?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I'll post it this week.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I'll send the letter on Monday.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Could you spell your surname?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Yes, I can hear you fine.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Sorry, the line is crackly.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Can you hear me okay?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Lovely weather today, isn't it?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "How was your weekend?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Did you get home safely?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Please, go on.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I see, thank you.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Right, got it.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "One moment, please.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Let me write that down.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Sorry, could you repeat that?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Okay, that's noted.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Pleasure speaking with you.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Good afternoon, this is Daniel.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I'm calling from Harbor Lane Advisers.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Is this a convenient moment?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Happy to call another time.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Yes, I have your file here.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "That's no trouble at all.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Wonderful, thank you.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Alright, I'll note that down.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Is the morning better for you?", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "I'll update your phone number.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Just confirming your date of birth.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Thanks, that's all I needed.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "You're very welcome.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Please excuse the background noise.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Yes, that's correct.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Speak soon, goodbye.", "tactics": [], "source": "sonnet", "note": "neutral"}
+{"text": "Please do talk this over with your daughter, or anyone you trust, before you decide anything.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You're welcome to share everything I've said with your family, and I'd encourage you to.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I'd suggest showing this paperwork to your own financial adviser before you sign.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's nothing confidential here, so feel free to discuss it with your accountant or your bank.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Many people like to ask a friend or relative for a second opinion, and that's perfectly sensible.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "If your son wants to join a follow-up call, he's very welcome to.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You don't need to keep this between us; ask whoever you like about it.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "If you'd like, I can speak with your husband too, so you're both comfortable.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's no rush at all, so please take as much time as you need to think it over.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Nothing is needed from you today; I'll simply send the details and you can read them at leisure.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The next review date is in March, so there's plenty of time to decide.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Take your time, and call me back whenever you're ready, whether that's next week or next month.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "This offer stays open for the whole quarter, so you can sleep on it comfortably.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's no deadline on our side; decide when it suits you.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "We can pick this up again after the holidays if you'd prefer.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I can't promise any particular return, because the value of this fund can go down as well as up.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Past results don't guarantee future performance, so please don't treat last year's figure as a forecast.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You could get back less than you put in, and I want you to understand that clearly.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Savings in this account are covered by deposit insurance up to the legal limit, and no further.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Deposit insurance covers the bank failing, but it doesn't protect you from market losses on investments.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The rate is variable, so it may fall over the coming year.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Every investment carries some risk, and this one is no exception.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's no minimum investment, and the product is available to anyone who'd like it.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "We have no limit on places, so there's no need to feel you must hurry for a spot.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The same terms are also listed on our website for anyone to see.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "This account is open to all customers, with no waiting list and no cap on sign-ups.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Anyone can apply at any branch, and the details are published on our public page.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's plenty of availability, so you won't be competing with other customers for it.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The fund is open to new savers all year round.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Some customers choose the fixed rate and others prefer the flexible one; it really depends on what suits you.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Different people pick different options here, and there's no single right answer for everyone.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Some of our clients keep everything in cash, while others spread it out; it's your situation that matters.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I can't say what most people do, because everyone's circumstances and comfort with risk differ.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "A few customers prefer monthly statements, others quarterly; you can simply choose which you like.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Some savers like the shorter term and some the longer one, depending on when they need the money.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I wouldn't base your choice on what other people do; your own needs come first.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "It depends entirely on your goals, not on what other customers happen to be doing.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "It's perfectly fine to wait; you won't lose anything by taking another few weeks to decide.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "If you decide not to go ahead, that's completely okay and nothing changes on your account.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Waiting costs you nothing here, and the option will still be there later.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's no penalty for saying no, and I won't think any less of the conversation.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Many people simply keep what they have, and that can be a perfectly good choice.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You don't have to act on this; staying as you are is a fine decision.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Whether markets rise or fall later, there's no reason to feel you must decide today.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "If it doesn't feel right, please don't feel you're missing out by passing.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I'll send you the full documents by post, and please read them carefully before you decide.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Would you like a paper copy of the terms to look over first?", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Please read the key information sheet first, and ask me about anything that isn't clear.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You can check our registration yourself before we go any further, and I'll give you the reference.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Do take a day or two to have someone review the contract before signing.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I'd recommend you verify who I am by calling the number on our official website.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "There's a cooling-off period, so you can cancel within fourteen days if you change your mind.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The fees are set out on page three of our published fee schedule, which you can download from our site.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Our firm is listed on the national financial services register, and you can search it by our name.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The key facts are in the fund factsheet, which gives the charges and the risk rating.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "You can look up the deposit insurance rules on the official deposit protection scheme website.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The annual report is public, and the figures I mentioned come from page twelve of it.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "I'm a regular adviser here; you can check my name on the regulator's public register.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The interest rate is shown in the product's terms and conditions, section four.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "The prospectus is available on the company's website, and the risks are listed on its second page.", "tactics": [], "source": "sonnet", "note": "hard_negative"}
+{"text": "Decide now, the offer ends tonight.", "tactics": ["urgency"], "source": "sonnet", "note": ""}
+{"text": "We need the transfer today.", "tactics": ["urgency"], "source": "sonnet", "note": ""}
+{"text": "Only three places left.", "tactics": ["scarcity"], "source": "sonnet", "note": ""}
+{"text": "Last units available, don't miss out.", "tactics": ["scarcity"], "source": "sonnet", "note": ""}
+{"text": "Everyone on your street has joined.", "tactics": ["social_proof"], "source": "sonnet", "note": ""}
+{"text": "Hundreds of retirees already signed up.", "tactics": ["social_proof"], "source": "sonnet", "note": ""}
+{"text": "Don't tell your family yet.", "tactics": ["secrecy"], "source": "sonnet", "note": ""}
+{"text": "Keep this just between us.", "tactics": ["secrecy"], "source": "sonnet", "note": ""}
+{"text": "Your money is totally risk free.", "tactics": ["guarantee"], "source": "sonnet", "note": ""}
+{"text": "It cannot lose, I promise.", "tactics": ["guarantee"], "source": "sonnet", "note": ""}
+{"text": "You'll regret it if you wait.", "tactics": ["fomo_regret"], "source": "sonnet", "note": ""}
+{"text": "Imagine watching everyone else get rich.", "tactics": ["fomo_regret"], "source": "sonnet", "note": ""}
+{"text": "No need to read the paperwork.", "tactics": ["skip_checks"], "source": "sonnet", "note": ""}
+{"text": "Skip the adviser, it's a waste.", "tactics": ["skip_checks"], "source": "sonnet", "note": ""}
+{"text": "I'm a senior regulator, trust me.", "tactics": ["authority"], "source": "sonnet", "note": ""}
+{"text": "We're officially approved by the government.", "tactics": ["authority"], "source": "sonnet", "note": ""}
+{"text": "Just give me your account details.", "tactics": ["skip_checks"], "source": "sonnet", "note": ""}
+{"text": "It's a final chance, act immediately.", "tactics": ["urgency"], "source": "sonnet", "note": ""}
+{"text": "Only a few spots remain this week.", "tactics": ["scarcity"], "source": "sonnet", "note": ""}
+{"text": "Smart investors are all buying in.", "tactics": ["social_proof"], "source": "sonnet", "note": ""}

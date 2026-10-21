@@ -1,0 +1,20 @@
+# Honest call. Fictional bank (Westmere Federal Savings) explains government savings bonds calmly. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, is this Eszter? I'm Leon Brandt, from Westmere Federal Savings. You asked about government savings bonds at the branch last week.
+YOU: Yes, I wanted to understand how they work.
+CALLER: Of course. Savings bonds are issued by the government, and they pay a fixed rate for a set term. You can buy them through our branch.
+YOU: What's the rate on the current ones?
+CALLER: The rate is published on the government's website and updated each month. I'd check there for the figure that applies to you.
+YOU: Can I cash a bond in at any time?
+CALLER: You can, but if you cash it before it's been held for a year, you don't earn interest for the last three months. The rules are on the official page.
+YOU: What's the most I can put in?
+CALLER: There is an annual purchase limit per person, which is set by the government. I'll give you the exact amount in the printed information.
+YOU: Are they risky, like shares?
+CALLER: No, they are not linked to the stock market. The return is set when you buy, and the value doesn't move with shares.
+YOU: That sounds calm. Do I need to do anything today?
+CALLER: Not at all. You're welcome to take the information away and read it when you like.
+YOU: Could you post me the leaflet?
+CALLER: Yes, I'll put it in the post this afternoon. There's also a short explainer on the government site that's quite clear.
+YOU: Thank you, that helps a lot.
+CALLER: You're welcome, Eszter. Call the branch whenever you have questions.

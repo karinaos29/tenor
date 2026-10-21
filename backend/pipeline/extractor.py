@@ -27,6 +27,7 @@ from pipeline.events import (
     EntitiesClosed,
     Entity,
     EntityDetected,
+    SpeakersUpdated,
     EntityKind,
     Utterance,
     UtteranceProgress,
@@ -68,6 +69,13 @@ _NOT_A_NAME = {"Just", "Calling", "Sorry", "Speaking", "Fine", "Great", "Here", 
 _CALLING_FROM = re.compile(r"\bcalling from\s+([A-Z][\w'-]*(?:\s+(?:and|&|of)?\s*[A-Z][\w'-]*){0,4})")
 _SPELLED = re.compile(r"\b([A-Z](?:[ .-][A-Z]){1,4})\b")
 _UPPER = re.compile(r"\b([A-Z]{2,5}(?:\.[A-Z])?)\b")
+# A company is "on offer" (not just mentioned, like "the next Apple") when introduced or priced.
+_OFFER_CONTEXT = re.compile(
+    r"\b(?:the ticker is|ticker|symbol|company called|heard of|opportunity (?:on|in)|invest(?:ing)? in|buy|"
+    r"recommend|position in|stake in|shares of|a share|per share|each|\$|cents?|¢)",
+    re.I,
+)
+_CLAUSE_SPLIT = re.compile(r",|;|\band\b|\bbut\b|\bwhile\b", re.I)
 _TICKER_CUE = re.compile(r"\b(?:ticker|symbol)(?:\s+is)?[:,]?\s+([A-Za-z](?:[ .-]?[A-Za-z]){0,4})\b", re.I)
 
 _UP = re.compile(r"\b(up|rose|risen|gained|grew|increased|jumped|soared|climbed)\b", re.I)
@@ -95,6 +103,7 @@ class RuleEntity:
     unit: str | None = None
     detail: str | None = None
     confidence: Confidence = "heard"
+    role: Literal["offered", "mentioned"] = "offered"
 
 
 @dataclass
@@ -104,6 +113,7 @@ class RuleClaim:
     claimed_value: float | None = None
     unit: str | None = None
     period: str | None = None
+    subject: str | None = None
 
 
 @dataclass
@@ -266,29 +276,51 @@ def _names(c: _Ctx, catalog: Catalog, out: RuleResult) -> None:
 def _tickers(c: _Ctx, catalog: Catalog, out: RuleResult) -> None:
     found: dict[str, RuleEntity] = {}
 
-    def add(symbol: str, start: int, end: int, confidence: Confidence) -> None:
+    def add(symbol: str, start: int, end: int, confidence: Confidence, introduced: bool = False) -> None:
         company = catalog.ticker(symbol)
-        if symbol not in found:
-            found[symbol] = RuleEntity(
-                "ticker", symbol, c.said(start, end), detail=company.name if company else None, confidence=confidence
-            )
+        a, b = c.sentence_of(start)
+        offered = introduced or bool(_OFFER_CONTEXT.search(c.n[a:b]))
+        if symbol in found:
+            if offered:
+                found[symbol].role = "offered"
+            return
+        found[symbol] = RuleEntity(
+            "ticker", symbol, c.said(start, end), detail=company.name if company else None, confidence=confidence,
+            role="offered" if offered else "mentioned",
+        )  # fmt: skip
 
     for m in _TICKER_CUE.finditer(c.n):
-        symbol = re.sub(r"[ .-]", "", m.group(1)).upper()
-        add(symbol, m.start(1), m.end(1), "matched" if catalog.ticker(symbol) else "unsure")
+        raw = m.group(1)
+        if not (raw.isupper() or re.search(r"[ .-]", raw)):
+            continue  # "the ticker is being…": a real word, not a symbol
+        symbol = re.sub(r"[ .-]", "", raw).upper()
+        add(symbol, m.start(1), m.end(1), "matched" if catalog.ticker(symbol) else "unsure", introduced=True)
     for m in _SPELLED.finditer(c.n):
         symbol = re.sub(r"[ .-]", "", m.group(1))
         if catalog.ticker(symbol):
-            add(symbol, m.start(), m.end(), "matched")
+            add(symbol, m.start(), m.end(), "matched", introduced=True)
     for m in _UPPER.finditer(c.n):
         if catalog.ticker(m.group(1)):
             add(m.group(1), m.start(), m.end(), "heard")
     for company in catalog.companies.values():
         for alias in sorted(company.aliases, key=len, reverse=True):
-            if m := re.search(rf"\b{re.escape(alias)}\b", c.n):
+            if m := re.search(rf"\b{re.escape(alias)}\b", c.n, re.I if alias.istitle() and len(alias) > 5 else 0):
                 add(company.ticker, m.start(), m.end(), "matched")
                 break
     out.entities.extend(found.values())
+
+
+def _clause_subject(c: _Ctx, out: RuleResult, sentence: str, pos: int) -> str | None:
+    """The company named in the same clause as `pos` ("Apple shares are up 80%, and
+    Bluewater is the next Apple" -> AAPL for the 80%)."""
+    cuts = [0] + [m.end() for m in _CLAUSE_SPLIT.finditer(sentence)] + [len(sentence)]
+    start = max(x for x in cuts if x <= pos)
+    end = min((x for x in cuts if x > pos), default=len(sentence))
+    clause = sentence[start:end].lower()
+    for e in out.entities:
+        if e.kind == "ticker" and (e.text.lower() in clause or e.value.lower() in clause.split()):
+            return e.value
+    return None
 
 
 def _claims(c: _Ctx, out: RuleResult) -> None:
@@ -300,7 +332,8 @@ def _claims(c: _Ctx, out: RuleResult) -> None:
         if percent and (_UP.search(sentence) or _DOWN.search(sentence)) and not _FEE_CUE.search(sentence):
             sign = -1.0 if _DOWN.search(sentence) and not _UP.search(sentence) else 1.0
             metric = "return" if _RETURN_WORD.search(sentence) else "price_change"
-            out.claims.append(RuleClaim(quote, metric, sign * _percent_value(percent.group(1)), "%", period))
+            subject = _clause_subject(c, out, sentence, percent.start())
+            out.claims.append(RuleClaim(quote, metric, sign * _percent_value(percent.group(1)), "%", period, subject))
         if _GUARANTEE.search(sentence) and not _NEGATED_GUARANTEE.search(sentence):
             value = _MULTIPLE[m.group(1).lower()] if (m := _MULTIPLE_RE.search(sentence)) else None
             if value is None and percent:
@@ -397,7 +430,9 @@ class EntityExtractor:
         self.call_id = call_id
         self.source = source
         self.drain_timeout = drain_timeout
-        self._sub = bus.subscribe(UtteranceFinal, UtteranceProgress, UtterancesClosed)
+        self._sub = bus.subscribe(UtteranceFinal, UtteranceProgress, UtterancesClosed, SpeakersUpdated)
+        self._recent: list[Utterance] = []  # last finals, to reprocess if relabeled as the caller's
+        self._reprocessed: set[str] = set()
         self._done: dict[str, int] = {}  # utterance id -> characters already processed
         self._seen_text: dict[str, str] = {}
         self._pending: set[asyncio.Task] = set()
@@ -413,6 +448,9 @@ class EntityExtractor:
                 self._chunk(event.utterance, final=False)
             elif isinstance(event, UtteranceFinal):
                 self._chunk(event.utterance, final=True)
+                self._recent = (self._recent + [event.utterance])[-20:]
+            elif isinstance(event, SpeakersUpdated):
+                self._relabeled(set(event.user_indices))
             elif isinstance(event, UtterancesClosed):
                 break
         if self._pending:
@@ -426,8 +464,8 @@ class EntityExtractor:
         self._ids += 1
         return f"{prefix}{self._ids}"
 
-    def _entity(self, u: Utterance, e: RuleEntity) -> None:
-        if e.kind == "ticker":
+    def _entity(self, u: Utterance, e: RuleEntity, source: str = "rules") -> None:
+        if e.kind == "ticker" and e.role == "offered":
             self._subject = e.value
         if u.speaker == "caller":
             self._person_known |= e.kind == "person"
@@ -446,6 +484,8 @@ class EntityExtractor:
                     speaker=u.speaker,
                     t=u.t_start,
                     confidence=e.confidence,
+                    source=source,  # type: ignore[arg-type]
+                    role=e.role,
                 )
             )
         )
@@ -465,6 +505,14 @@ class EntityExtractor:
                 )
             )
         )
+
+    def _relabeled(self, user: set[int]) -> None:
+        """A line first labeled "You" may turn out to be the caller's (e.g. the caller spoke
+        first, so the first-turn rule guessed wrong). Process it again as the caller's."""
+        for u in self._recent:
+            if u.speaker == "user" and u.speaker_index not in user and u.id not in self._reprocessed:
+                self._reprocessed.add(u.id)
+                self._handle(u.model_copy(update={"speaker": "caller"}))
 
     def _chunk(self, u: Utterance, final: bool) -> None:
         """Process only text not seen yet: complete sentences while the turn is in progress,
@@ -491,7 +539,7 @@ class EntityExtractor:
         if u.speaker == "caller":
             self._caller_lines += 1
             for c in result.claims:
-                self._claim(u, c.text, c.metric, c.claimed_value, c.unit, c.period, None)
+                self._claim(u, c.text, c.metric, c.claimed_value, c.unit, c.period, c.subject)
             events = event_sentences(u.text)
             intro_names = self._caller_lines <= 3 and not (self._person_known and self._firm_known)
             if events or intro_names:
@@ -523,9 +571,23 @@ class EntityExtractor:
             self._claim(u, c.text.strip(), c.metric, c.claimed_value, c.unit, c.period, c.subject)
         rule_kinds = {e.kind for e in rules.entities}
         for e in result.entities:
-            if e.kind in rule_kinds or not quoted(e.text, u.text):
+            if e.kind in rule_kinds or not quoted(e.text, u.text) or not self._plausible(e):
                 continue
-            self._entity(u, self._resolve(e))
+            self._entity(u, self._resolve(e), source="llm")
+
+    def _plausible(self, e: LlmEntity) -> bool:
+        """Drop LLM 'names' that are really company names (seen live: a lithium company as the caller)."""
+        text = e.text.strip()
+        if e.kind in ("person", "firm"):
+            lowered = text.lower()
+            for company in self.catalog.companies.values():
+                if lowered == company.ticker.lower() or any(lowered == a.lower() for a in company.aliases):
+                    return False
+        if e.kind == "person":
+            words = text.split()
+            org = {"capital", "partners", "bank", "savings", "motors", "lithium", "gold", "trust", "group", "inc", "ltd", "llc", "fund", "wealth"}
+            return 2 <= len(words) <= 3 and all(w[:1].isupper() for w in words) and not org & {w.lower().strip(".,") for w in words}
+        return True
 
     def _resolve(self, e: LlmEntity) -> RuleEntity:
         text = e.text.strip()

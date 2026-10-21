@@ -170,6 +170,10 @@ class Entity(BaseModel):
     speaker: Role
     t: float
     confidence: Confidence = "heard"
+    source: Literal["rules", "llm"] = "rules"
+    role: Literal["offered", "mentioned"] = Field(
+        default="offered", description="For tickers: on offer, or only mentioned (e.g. 'the next Apple')"
+    )
 
 
 ClaimStatus = Literal["checking", "verified", "false", "not_found", "unverifiable"]
@@ -340,6 +344,29 @@ class RiskUpdated(Event):
     reasons: list[RiskReason]
 
 
+# --- Detecting pressure tactics (M4) --------------------------------------------------
+
+TacticIdLiteral = Literal["urgency", "scarcity", "social_proof", "secrecy", "guarantee", "fomo_regret", "skip_checks", "authority"]
+
+
+class TacticFlag(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    tactic: TacticIdLiteral
+    label: str = Field(description="Plain-words name shown to the user, e.g. 'Keeping it secret'")
+    quote: str = Field(description="The caller's words that triggered it")
+    severity: Literal["mild", "strong"]
+    utterance_id: str
+    score: float = Field(description="Classifier probability (1.0 for a rule-only match)")
+    source: Literal["classifier", "rule", "both"]
+
+
+class TacticFlagged(Event):
+    type: Literal["tactic.flagged"] = "tactic.flagged"
+    flag: TacticFlag
+
+
 # --- Bus-internal events (never sent to the browser) ------------------------------
 
 
@@ -406,6 +433,12 @@ class OfferClosed(Event):
     type: Literal["offer.closed"] = "offer.closed"
 
 
+class TacticsClosed(Event):
+    """The pressure detector has finished (end-of-call chain)."""
+
+    type: Literal["tactics.closed"] = "tactics.closed"
+
+
 class ChecksClosed(Event):
     """The claim checker has finished its pending checks (end-of-call chain)."""
 
@@ -445,7 +478,8 @@ TenorEvent = Annotated[
     | ClaimChecked
     | ResearchReady
     | SuggestionsUpdated
-    | RiskUpdated,
+    | RiskUpdated
+    | TacticFlagged,
     Field(discriminator="type"),
 ]
 
@@ -472,4 +506,80 @@ class ReplayList(BaseModel):
     replays: list[ReplayInfo]
 
 
-REST_MODELS: list[type[BaseModel]] = [ReplayList]
+class MetricRow(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    tactic: str
+    label: str
+    precision: float
+    recall: float
+    f1: float
+    support: int
+
+
+class DetectorScores(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    name: str
+    rows: list[MetricRow]
+    micro: MetricRow
+    any_tactic: MetricRow
+    latency_ms_median: float
+    note: str = ""
+
+
+class CallResult(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    name: str
+    kind: Literal["manipulative", "honest"]
+    hard_honest: bool
+    expected: str = Field(description="e.g. 'high or critical' / 'low or medium'")
+    risk_score: int
+    risk_level: str
+    ok: bool
+    false_claims_expected: int
+    false_claims_caught: int
+    tactic_recall: float | None
+    tactic_precision: float | None
+    max_visible_suggestions: int
+
+
+class StageLatency(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    stage: str
+    n: int
+    median_ms: float
+    p95_ms: float
+
+
+class Target(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    label: str
+    target: str
+    measured: str
+    met: bool | None
+
+
+class EvalReport(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    run_id: str
+    created_at: datetime
+    commit: str
+    note: str
+    data: str = Field(description="What the benchmark is made of, in plain words")
+    targets: list[Target]
+    detectors: list[DetectorScores]
+    calls: list[CallResult]
+    latency: list[StageLatency]
+    audio: bool
+
+
+class EvalResponse(BaseModel):
+    report: EvalReport | None
+
+
+REST_MODELS: list[type[BaseModel]] = [ReplayList, EvalResponse]

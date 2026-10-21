@@ -1,0 +1,28 @@
+{
+  "ticker": "ARDG",
+  "name": "Ardent Gold Mines",
+  "aliases": [
+    "Ardent Gold Mines",
+    "Ardent Gold",
+    "Ardent"
+  ],
+  "fictional": true,
+  "note": "Fictional company for an M4 test call. All market data is invented test data.",
+  "market": {
+    "price": 6.05,
+    "day_change_pct": 0.3,
+    "returns_pct": {
+      "5d": 0.9,
+      "mtd": 4.0,
+      "13w": 9.7,
+      "ytd": 14.2,
+      "52w": 22.5
+    },
+    "profile": {
+      "exchange": "OTC (unlisted)",
+      "ipo": "2025-02-20",
+      "market_cap_musd": 27.3
+    },
+    "news": []
+  }
+}

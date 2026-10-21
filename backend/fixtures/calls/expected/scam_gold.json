@@ -1,0 +1,68 @@
+{
+  "kind": "manipulative",
+  "hard_honest": false,
+  "risk": {
+    "min_level": "high"
+  },
+  "caller_tactics": [
+    {
+      "text": "Good afternoon, Eszter? It's Russell Vance from Golden Meridian Bullion Trust. Do you have a minute?",
+      "tactics": []
+    },
+    {
+      "text": "Gold, Eszter. Gold coins that are about to triple in value. Our clients who bought last year are very pleased.",
+      "tactics": [
+        "guarantee",
+        "social_proof"
+      ]
+    },
+    {
+      "text": "Normally, yes. But the mine supplying our coins is Ardent Gold Mines, ticker A R D G, and its shares are up thirty percent this month alone.",
+      "tactics": []
+    },
+    {
+      "text": "They supply our bullion, which is why our coins are about to triple. The gold price is guaranteed to climb once the new mine opens.",
+      "tactics": [
+        "guarantee"
+      ]
+    },
+    {
+      "text": "Our coins are, Eszter, and I've seen the model myself. Any investor who waits will miss the entire rise.",
+      "tactics": [
+        "fomo_regret",
+        "guarantee"
+      ]
+    },
+    {
+      "text": "A starter set is eight thousand dollars. Eight thousand today locks in the price for the whole run.",
+      "tactics": [
+        "urgency"
+      ]
+    },
+    {
+      "text": "I'm afraid not. The price is only held until four o'clock today. After that, it goes back to the normal market.",
+      "tactics": [
+        "urgency"
+      ]
+    },
+    {
+      "text": "There's no need for that. Most of our customers buy over the phone, and the paperwork is just a formality.",
+      "tactics": [
+        "skip_checks"
+      ]
+    },
+    {
+      "text": "Eszter, the people who waited last year regretted it badly. Shall I reserve the starter set for you now?",
+      "tactics": [
+        "fomo_regret",
+        "urgency"
+      ]
+    }
+  ],
+  "false_claims": [
+    {
+      "text_contains": "up thirty percent this month",
+      "metric": "price_change"
+    }
+  ]
+}

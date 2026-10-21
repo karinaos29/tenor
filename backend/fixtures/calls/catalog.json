@@ -1,5 +1,15 @@
 {
   "scam_kstl": "Pushy share offer (2 min)",
   "honest_voo": "Bank adviser, index fund (2 min)",
-  "m1_hello": "Short test call (36 s)"
+  "m1_hello": "Short test call (36 s)",
+  "scam_silverline": "Lithium shares, 'next Apple' (1 min)",
+  "scam_crypto_recovery": "Crypto 'recovery' service",
+  "scam_pension_transfer": "Pension transfer offer",
+  "scam_gold": "Gold coins 'about to triple'",
+  "honest_cd_deadline": "Bank: CD rate ends Friday",
+  "honest_insured_savings": "Bank: insured savings account",
+  "honest_many_customers": "Adviser: balanced fund",
+  "honest_insurance_review": "Home insurance review",
+  "honest_pension_checkin": "Pension annual check-in",
+  "honest_bond_info": "Bank: savings bonds"
 }

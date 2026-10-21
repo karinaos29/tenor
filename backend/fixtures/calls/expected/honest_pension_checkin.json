@@ -1,0 +1,46 @@
+{
+  "kind": "honest",
+  "hard_honest": false,
+  "risk": {
+    "max_level": "medium"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, Eszter? It's Ruth Adeyemi from Alderbrook Pension Services. This is your yearly check-in call about your workplace pension.",
+      "tactics": []
+    },
+    {
+      "text": "Your statement shows a balance of about ninety-two thousand dollars, with contributions from your former employer and a small amount from you.",
+      "tactics": []
+    },
+    {
+      "text": "The plan charges an annual management fee of about point six percent, which is deducted from the fund value each year.",
+      "tactics": []
+    },
+    {
+      "text": "The figure in the statement includes the fund's charge. The total annual cost is shown on the second page.",
+      "tactics": []
+    },
+    {
+      "text": "Yes, you can, but it's your decision. We can send you the transfer information pack, which lists any charges.",
+      "tactics": []
+    },
+    {
+      "text": "That's fine. There is no need to make any change. We simply need to confirm your nominated beneficiary details.",
+      "tactics": []
+    },
+    {
+      "text": "Thank you. I've noted that. Would you like the statement by post, or in your online account?",
+      "tactics": []
+    },
+    {
+      "text": "No problem. I'll mark that for you. The next statement will arrive in March.",
+      "tactics": []
+    },
+    {
+      "text": "Just that you can check your fund choices online at any time, and call us with any questions.",
+      "tactics": []
+    }
+  ],
+  "false_claims": []
+}

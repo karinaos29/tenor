@@ -1,0 +1,20 @@
+# Honest call (HARD). Fictional bank (Cedar Hollow Savings Bank). Insured deposits and a rate fixed for 12 months, stated plainly, no pressure. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, Eszter? It's Priya Nair from Cedar Hollow Savings Bank. You asked about our savings accounts on our website, so I'm returning your enquiry.
+YOU: Yes, I was looking at savings options. I'd like something safe.
+CALLER: Our standard savings account is a good fit for that. It's a simple account, and you can open it at any branch or online.
+YOU: What rate does it pay?
+CALLER: The rate for the twelve-month account is 4.1 percent a year, and it's fixed for the whole twelve months. It won't change during that time.
+YOU: Is my money safe with you?
+CALLER: Deposits here are insured by the government up to the legal limit per depositor. The limit is shown on the disclosure sheet I'll send you.
+YOU: What happens if I take money out early?
+CALLER: You can withdraw early, but there's a small charge, and the rate for the remaining term is reduced. The exact terms are in the account agreement.
+YOU: Is there a minimum amount?
+CALLER: The minimum to open the account is five hundred dollars. There's no maximum set by us, though the deposit insurance limit still applies.
+YOU: That makes sense. How long does it take to open?
+CALLER: About fifteen minutes at a branch, or a little longer online. You don't have to decide today.
+YOU: I'd like to think about it and compare a few options.
+CALLER: That's a sensible approach. I'll email you the disclosure sheet and the account agreement, and you can read them at your own pace.
+YOU: Thank you. Could you also tell me if the rate will change after twelve months?
+CALLER: After twelve months the account renews at the rate then on offer, which we'll tell you in writing before that date.

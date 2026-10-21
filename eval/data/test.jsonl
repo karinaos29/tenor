@@ -1,0 +1,80 @@
+{"text": "This price is locked only until five o'clock today, so you need to decide before we hang up.", "tactics": ["urgency"], "source": "haiku", "note": ""}
+{"text": "I can only hold these shares for you until tonight, after that someone else gets them.", "tactics": ["urgency"], "source": "haiku", "note": ""}
+{"text": "If you don't send the first payment this afternoon, the offer expires and I can't help you.", "tactics": ["urgency"], "source": "haiku", "note": ""}
+{"text": "Give me your answer right now, I have three other people waiting on this line.", "tactics": ["urgency"], "source": "haiku", "note": ""}
+{"text": "The rate resets in two hours, so we need to finish this call with your yes.", "tactics": ["urgency"], "source": "haiku", "note": ""}
+{"text": "Only a handful of places are left in this fund, and it isn't offered to the general public.", "tactics": ["scarcity"], "source": "haiku", "note": ""}
+{"text": "We work with select clients only, so this opportunity is not advertised anywhere.", "tactics": ["scarcity"], "source": "haiku", "note": ""}
+{"text": "This is an exclusive allocation, reserved for a very small group of investors.", "tactics": ["scarcity"], "source": "haiku", "note": ""}
+{"text": "There are only twenty units left, and they're going fast to our private list.", "tactics": ["scarcity"], "source": "haiku", "note": ""}
+{"text": "Most of my clients put ten thousand dollars in during their first week.", "tactics": ["social_proof"], "source": "haiku", "note": ""}
+{"text": "Thousands of people have already joined this plan this year, so it's clearly the smart move.", "tactics": ["social_proof"], "source": "haiku", "note": ""}
+{"text": "Everyone in my retirement group is in this already, and the ones who waited regret it.", "tactics": ["fomo_regret", "social_proof"], "source": "haiku", "note": ""}
+{"text": "Nine out of ten of our customers take the maximum amount, so you should too.", "tactics": ["social_proof"], "source": "haiku", "note": ""}
+{"text": "Please don't mention this call to your bank, they'll only try to talk you out of it.", "tactics": ["secrecy"], "source": "haiku", "note": ""}
+{"text": "Keep this between us for now, family often doesn't understand these opportunities.", "tactics": ["secrecy"], "source": "haiku", "note": ""}
+{"text": "Don't discuss the details with your financial adviser until the transfer is done.", "tactics": ["secrecy"], "source": "haiku", "note": ""}
+{"text": "It's better if you don't tell your children about the pension transfer until it's set up.", "tactics": ["secrecy"], "source": "haiku", "note": ""}
+{"text": "Tell nobody about this before tonight's deadline, your bank staff will only get in the way.", "tactics": ["secrecy", "urgency"], "source": "haiku", "note": ""}
+{"text": "This fund is guaranteed to double your money within a year, you simply cannot lose.", "tactics": ["guarantee"], "source": "haiku", "note": ""}
+{"text": "It's a risk-free return, so there's really nothing to worry about at all.", "tactics": ["guarantee"], "source": "haiku", "note": ""}
+{"text": "I can promise you a sure thing here, the shares are going to go up.", "tactics": ["guarantee"], "source": "haiku", "note": ""}
+{"text": "This crypto token will triple by next spring, that's what our model shows.", "tactics": ["guarantee"], "source": "haiku", "note": ""}
+{"text": "Without any risk, your investment will earn at least twelve percent every year.", "tactics": ["guarantee"], "source": "haiku", "note": ""}
+{"text": "Our analysts say this company will be the next big name, and insiders already know.", "tactics": ["authority"], "source": "haiku", "note": ""}
+{"text": "Top economists are quietly buying this, and that's why I'm calling you personally.", "tactics": ["authority"], "source": "haiku", "note": ""}
+{"text": "Wall Street insiders have been buying these shares for weeks, so the decision is easy.", "tactics": ["authority"], "source": "haiku", "note": ""}
+{"text": "Our senior experts have an inside view on the market that ordinary investors simply don't get.", "tactics": ["authority"], "source": "haiku", "note": ""}
+{"text": "There's no time for paperwork, just send the transfer and I'll confirm by phone.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "You don't need to read the contract, I'll explain everything you need to know.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "Forget the written details, they're just legal noise and I'll walk you through it.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "No need to check our license with the regulator, my word is good enough.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "Skip the verification step, it only slows things down and nobody reads those forms.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "People who waited last year regretted it badly, so don't make the same mistake.", "tactics": ["fomo_regret"], "source": "haiku", "note": ""}
+{"text": "Don't miss out on this, a lot of people would give anything for this chance.", "tactics": ["fomo_regret"], "source": "haiku", "note": ""}
+{"text": "You'll be kicking yourself next year when the price doubles without you.", "tactics": ["fomo_regret"], "source": "haiku", "note": ""}
+{"text": "Don't miss out, this chance is gone once we hang up the phone.", "tactics": ["fomo_regret", "urgency"], "source": "haiku", "note": ""}
+{"text": "Wire it today, because the price ends at noon and it's guaranteed to climb.", "tactics": ["guarantee", "urgency"], "source": "haiku", "note": ""}
+{"text": "Most of our clients doubled their savings this year, and nobody loses money with us.", "tactics": ["guarantee", "social_proof"], "source": "haiku", "note": ""}
+{"text": "Only three slots remain for today, and I need your decision before the list closes.", "tactics": ["scarcity", "urgency"], "source": "haiku", "note": ""}
+{"text": "Don't bother with the bank's forms, just tell them it's a family matter and move on.", "tactics": ["secrecy", "skip_checks"], "source": "haiku", "note": ""}
+{"text": "Our insider group got early access, and it's reserved for people my firm picks.", "tactics": ["authority", "scarcity"], "source": "haiku", "note": ""}
+{"text": "The experts say it's a sure thing, and our model guarantees a return of thirty percent.", "tactics": ["authority", "guarantee"], "source": "haiku", "note": ""}
+{"text": "Most people in my property club bought in last month, and they're all delighted.", "tactics": ["social_proof"], "source": "haiku", "note": ""}
+{"text": "If you walk away now, you'll regret it for the rest of your life.", "tactics": ["fomo_regret"], "source": "haiku", "note": ""}
+{"text": "The forms can wait until after the money has moved, that's how we always do it.", "tactics": ["skip_checks"], "source": "haiku", "note": ""}
+{"text": "The certificate's rate ends on the last day of March, and you can take all the time you need.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The IRA contribution deadline for last year is April fifteenth, but there's no pressure at all.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "This is a standard savings account, and anyone can open one at any branch.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The fund has been open to the public since two thousand nine, with no special invitation needed.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Many customers choose a balanced fund, but it's just one of several options we offer.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Your account details are private, and we only share them with you and the bank's auditors.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "You're welcome to talk this over with your family or your adviser before you decide.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Deposits at this bank are insured by the government up to the legal limit per depositor.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Past returns don't guarantee future results, so please read the factsheet carefully.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The rate is fixed for twelve months, so your balance won't change during that time.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Take your time to read the documents, and call me back with any questions.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "I'll send you the written fee schedule today, so you can check every number yourself.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The fund's factsheet, published on the provider's website, lists its holdings and annual fees.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The independent rating agency's March report is public, and you can look up the rating yourself.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Some people wait a long time before they change funds, and many of them end up doing fine either way.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "The rate history for the last ten years is on our website if you'd like to look at it.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Our office is closed on Monday for a public holiday, so the paperwork will be ready on Tuesday.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "We have a limited number of branches in this region, so appointments can take about a week.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Other customers have asked about this fund, so we put together a short guide on it.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Government savings bonds are backed by the Treasury and pay a fixed rate for their term.", "tactics": [], "source": "haiku", "note": "hard_negative"}
+{"text": "Good morning, this is Tom from the branch, calling about your savings review.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Your statement will arrive by post at the end of each month.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "The annual fee on that account is twenty dollars, charged in January.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "I'll note that you'd prefer phone calls rather than emails from now on.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Could you please confirm the spelling of your surname for our records?", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Our opening hours are nine to five on weekdays, and ten to two on Saturdays.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "The pension provider sends a yearly statement showing your balance and contributions.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "I'd like to give you a short summary, and then you can ask any questions.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Would Thursday afternoon suit you for a follow-up call?", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Your home insurance policy renews in June, and the premium is shown in the letter.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "The fund invests mostly in large companies listed on the New York Stock Exchange.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Gold prices move up and down with demand, so the value of coins can change.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Here is the address where the documents will be posted to you.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "Thank you for your time today, have a pleasant evening.", "tactics": [], "source": "haiku", "note": "neutral"}
+{"text": "We can talk again next month if that would be helpful to you.", "tactics": [], "source": "haiku", "note": "neutral"}

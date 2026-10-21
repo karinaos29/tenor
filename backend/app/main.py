@@ -1,6 +1,8 @@
 """FastAPI entry point. Run from backend/: `uv run uvicorn app.main:app --reload`."""
 
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import json
 import logging
 import re
@@ -14,6 +16,8 @@ from pydantic import ValidationError
 from app.config import VERSION, get_settings
 from audio.sources import AudioSource, FileSource, MicSource
 from pipeline.events import (
+    EvalReport,
+    EvalResponse,
     CallEnded,
     CallStart,
     CallStop,
@@ -30,13 +34,22 @@ from pipeline.latency import record
 from pipeline.llm import fast_llm
 from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
+from detector.classifier import TacticClassifier
 from providers.catalog import default_catalog
 from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("tenor.app")
 
-app = FastAPI(title="Tenor", version=VERSION)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Loading the embedding model takes a few seconds (and downloads it once); do it off the loop.
+    app.state.classifier = await asyncio.to_thread(TacticClassifier.load_default)
+    yield
+
+
+app = FastAPI(title="Tenor", version=VERSION, lifespan=lifespan)
+app.state.classifier = None  # set at startup; None = tactic rules only
 
 # Swappable in tests (fake transcriber, temp replay folder).
 app.state.transcriber_factory = lambda: DeepgramTranscriber(get_settings().deepgram_api_key)
@@ -90,6 +103,24 @@ async def health_socket(ws: WebSocket) -> None:
             record("health.server", server_ms)
     except WebSocketDisconnect:
         pass
+
+
+# --- Evaluation ------------------------------------------------------------------------
+
+app.state.eval_results = Path(__file__).resolve().parents[2] / "eval" / "results" / "latest.json"
+
+
+@app.get("/api/eval")
+def eval_report() -> EvalResponse:
+    """The latest evaluation run (eval/run_eval.py), or null if none has been run."""
+    path: Path = app.state.eval_results
+    if not path.exists():
+        return EvalResponse(report=None)
+    try:
+        return EvalResponse(report=EvalReport.model_validate_json(path.read_text()))
+    except ValueError:
+        log.warning("eval results at %s are unreadable", path)
+        return EvalResponse(report=None)
 
 
 # --- Replays -------------------------------------------------------------------------
@@ -153,6 +184,7 @@ async def call_socket(ws: WebSocket) -> None:
         llm=app.state.llm_factory(),
         market=app.state.market_factory(),
         wording_timeout=get_settings().tenor_wording_timeout_s,
+        classifier=app.state.classifier,
     )
     log.info("call %s started (%s)", session.id, first.source)
     run = asyncio.create_task(session.run())

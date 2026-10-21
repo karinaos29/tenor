@@ -27,6 +27,7 @@ from pipeline.events import (
     RiskUpdated,
     SpeakersUpdated,
     SuggestionsUpdated,
+    TacticFlagged,
     TranscriberStatus,
     UtteranceFinal,
 )
@@ -34,6 +35,7 @@ from pipeline.latency import LOG_PATH
 from pipeline.llm import fast_llm
 from pipeline.session import UI_EVENTS, CallSession
 from pipeline.transcriber import DeepgramTranscriber
+from detector.classifier import TacticClassifier
 from providers.catalog import default_catalog
 from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
@@ -76,6 +78,9 @@ async def print_event(event: Event) -> None:
             print(f"  · suggestions: {', '.join(top)}")
     elif isinstance(event, RiskUpdated):
         print(f"  · RISK {event.score} {event.level}: " + "; ".join(f"+{r.points} {r.label}" for r in event.reasons))
+    elif isinstance(event, TacticFlagged):
+        f = event.flag
+        print(f"  ! TACTIC {f.tactic} ({f.severity}, {f.source}, p={f.score}): {f.quote[:70]!r}")
     elif isinstance(event, CallEnded):
         print(f"  · call ended ({event.reason})")
 
@@ -115,6 +120,7 @@ async def main(path: Path) -> None:
             FixtureProvider(default_catalog()), FinnhubProvider(settings.finnhub_api_key, timeout_s=settings.finnhub_timeout_s)
         ),
         wording_timeout=settings.tenor_wording_timeout_s,
+        classifier=TacticClassifier.load_default(),
         forward=(*UI_EVENTS, ClaimExtracted),
     )
     print(f"Replaying {path.name} ({source.duration_s:.1f} s), call {session.id}")

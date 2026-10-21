@@ -1,0 +1,65 @@
+{
+  "kind": "manipulative",
+  "hard_honest": false,
+  "risk": {
+    "min_level": "high"
+  },
+  "caller_tactics": [
+    {
+      "text": "Good morning, is this Eszter? My name is Owen Harlow, from Beacon Ridge Asset Recovery.",
+      "tactics": []
+    },
+    {
+      "text": "We help people get back money lost to online crypto scams. I understand you invested through a trading platform last year.",
+      "tactics": []
+    },
+    {
+      "text": "We track recovered funds across several exchanges. Your account shows a balance that we can still reach.",
+      "tactics": []
+    },
+    {
+      "text": "A recovery fee of two thousand dollars, paid in cryptocurrency to our holding wallet. That unlocks the withdrawal from Veltrix Digital Exchange.",
+      "tactics": []
+    },
+    {
+      "text": "Veltrix Digital Exchange, ticker V L T X. Their shares are up sixty percent this year, so the company is clearly doing well.",
+      "tactics": []
+    },
+    {
+      "text": "You can, but you have to act today. The recovery window closes at midnight, and the freeze will be permanent after that.",
+      "tactics": [
+        "urgency"
+      ]
+    },
+    {
+      "text": "Nobody needs to know, and please don't tell your bank or your son. They'll only panic and stop the transfer.",
+      "tactics": [
+        "secrecy"
+      ]
+    },
+    {
+      "text": "I'm sorry, but if you call anyone, the recovery is cancelled. It has to stay between us.",
+      "tactics": [
+        "secrecy"
+      ]
+    },
+    {
+      "text": "There isn't time for paperwork. Just buy the coins, send them to the wallet, and I'll confirm the release by phone.",
+      "tactics": [
+        "skip_checks"
+      ]
+    },
+    {
+      "text": "Please, the window is closing. Shall I put you down for the two thousand?",
+      "tactics": [
+        "urgency"
+      ]
+    }
+  ],
+  "false_claims": [
+    {
+      "text_contains": "up sixty percent this year",
+      "metric": "price_change"
+    }
+  ]
+}

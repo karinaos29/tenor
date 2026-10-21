@@ -209,3 +209,30 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 - **Decision:** The transcriber watches frame loudness. After 0.45 s of silence following speech, it sends Deepgram `{"type":"Finalize"}` once per pause. A result flushed this way (`from_finalize`) finalizes its words but doesn't end the turn.
 - **Why:** On the full scam call, Deepgram returned "…up 40% this quarter." and your reply "40%? That sounds like a lot." as one final segment, 3.8 s after the claim. Even sentence-level extraction couldn't act before that. With Finalize, spoken → flagged dropped to 0.79 s. A first version at 0.3 s that also ended the turn split sentences into fragments ("Most people haven't," / "Yet."), hence 0.45 s and turn-preserving flushes. A 40-second trimmed test file had first suggested 0.94 s; that was an artifact, because the file's end forced the flush.
 - **Alternative:** Lower Deepgram's `endpointing`. It didn't fire on this 0.6 s gap, and shorter endpointing splits turns everywhere.
+
+---
+
+### 2026-10-21 · M4 · Two AI authors for the benchmark
+- **Decision:** Training lines (240 + 130) were written by Claude Sonnet. The 80 held-out test lines and 9 of the 12 test calls were written by Claude Haiku from a separate brief, with no access to the training data. 3 calls were written by Opus (KSTL, VOO, and your Silverline dialogue). A cosine check found no near-duplicates between train and test (max 0.85).
+- **Why:** Your choice. With one author, a classifier can score well by learning that writer's style. The first evaluation proved the point: thresholds tuned on training data gave precision 0.60 on the other author's lines.
+- **Alternative:** One author with a random split (optimistic scores), or hand-labeled lines (most credible, but needs your time).
+
+### 2026-10-21 · M4 · One round of feedback from the first evaluation, disclosed
+- **Decision:** After the first run (precision 0.60; 5 of 7 honest calls rated high), I added 130 training lines of the two failure *kinds*: short small talk, and same-topic opposites ("feel free to talk it over with your family"). I described the kinds, not the test lines. I also changed three things on principle: thresholds now maximize F0.5 on out-of-fold *training* predictions; "strong" needs a rule or p ≥ 0.9; mild flags add 3 risk points instead of 5. The test set was not changed.
+- **Why:** Sentence embeddings capture the topic (family, guarantees) more than the polarity, so the classifier needed examples of opposite intent on the same topic. For an alert during a call, a false alarm costs more trust than a miss, and the rules add recall back. Because the changes were prompted by the first test results, the final numbers are slightly optimistic, and the report says so.
+- **Alternative:** Tune thresholds on the test set. That would be leakage, so the numbers would mean nothing.
+
+### 2026-10-21 · M4 · The local classifier stays on the live path, although the LLM scores higher
+- **Decision:** Live detection uses classifier + rules (F1 0.84, ~9 ms per line). Gemini zero-shot scored higher on the held-out lines (F1 0.93) but takes ~660 ms per line, costs tokens, and hit the per-minute quota (HTTP 429) even when run one line at a time during the evaluation.
+- **Why:** During a call the detector runs on every caller sentence and must answer in under 300 ms, offline and without a quota. Accuracy alone would favor the LLM; latency, reliability and cost favor the local model. Reported as measured, not as a win.
+- **Alternative:** The LLM as the primary detector, or as an async second opinion that can upgrade or retract a flag a second later. The second option is a good M5+ follow-up.
+
+### 2026-10-21 · M4 · Rate limits are part of the measurement
+- **Decision:** The baseline runs one line at a time with exponential backoff, and caches every answer by model + text. The LLM wrapper now logs the error message, not just the type.
+- **Why:** At 4 and then 2 concurrent hedged requests, 42 and then 9 of 80 lines failed with 429 RESOURCE_EXHAUSTED. Spaced out, all succeeded, so it's a per-minute limit. Counting failures as "no tactic" first made Gemini look worse than it is (recall 0.41).
+- **Alternative:** Report the failed run. Unfair to the baseline.
+
+### 2026-10-21 · M4 · Fixes from your read-aloud dialogue (Silverline)
+- **Decision:** (1) A claim's subject is the company named in the claim's own clause. (2) Tickers are "offered" only when introduced ("the ticker is", "a company called", "heard of") or priced; mentions like "the next Apple" are researched but don't change the offer. (3) LLM-sourced entities may fill an empty offer field but never overwrite one, and LLM "names" that are known company names are dropped. (4) When a relabel turns a "You" line into the caller's, the extractor and the pressure detector reprocess it.
+- **Why:** The replay checked "Apple … up 80%" against Bluewater's data, briefly made Apple the offer, showed "Bluewater Lithium" as the caller, and lost the caller's intro because the caller spoke first. Text-based tests can't produce these; real transcripts can.
+- **Alternative:** An LLM to resolve claim subjects. Slower, and the clause rule is explainable.

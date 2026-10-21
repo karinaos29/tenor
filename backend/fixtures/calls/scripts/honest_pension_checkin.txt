@@ -1,0 +1,20 @@
+# Honest call. Fictional pension provider (Alderbrook Pension Services) doing an annual check-in; explains fees, no product push. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, Eszter? It's Ruth Adeyemi from Alderbrook Pension Services. This is your yearly check-in call about your workplace pension.
+YOU: Yes, I got your letter. Go ahead.
+CALLER: Your statement shows a balance of about ninety-two thousand dollars, with contributions from your former employer and a small amount from you.
+YOU: That seems about right. What does it cost to keep it there?
+CALLER: The plan charges an annual management fee of about point six percent, which is deducted from the fund value each year.
+YOU: Is that the same as the fund's own charge?
+CALLER: The figure in the statement includes the fund's charge. The total annual cost is shown on the second page.
+YOU: Could I move the pension somewhere else?
+CALLER: Yes, you can, but it's your decision. We can send you the transfer information pack, which lists any charges.
+YOU: I'm happy where it is for now.
+CALLER: That's fine. There is no need to make any change. We simply need to confirm your nominated beneficiary details.
+YOU: They're the same as before, my husband and my sister.
+CALLER: Thank you. I've noted that. Would you like the statement by post, or in your online account?
+YOU: Post is fine, I'm not very good with the website.
+CALLER: No problem. I'll mark that for you. The next statement will arrive in March.
+YOU: Thank you. Is there anything else I should know?
+CALLER: Just that you can check your fund choices online at any time, and call us with any questions.

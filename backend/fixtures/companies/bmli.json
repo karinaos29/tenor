@@ -1,0 +1,27 @@
+{
+  "ticker": "BMLI",
+  "name": "Brightmoor Lithium",
+  "aliases": [
+    "Brightmoor Lithium",
+    "Brightmoor"
+  ],
+  "fictional": true,
+  "note": "Fictional company for an M4 test call. All market data is invented test data.",
+  "market": {
+    "price": 12.15,
+    "day_change_pct": 0.4,
+    "returns_pct": {
+      "5d": -2.2,
+      "mtd": 1.1,
+      "13w": -6.8,
+      "ytd": -3.1,
+      "52w": 4.0
+    },
+    "profile": {
+      "exchange": "OTC (unlisted)",
+      "ipo": "2024-06-17",
+      "market_cap_musd": 88.0
+    },
+    "news": []
+  }
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ClaimsCard } from "./ClaimsCard";
 import { OfferCard } from "./OfferCard";
+import { TacticsCard } from "./TacticsCard";
 import { Suggestions } from "./Suggestions";
 
 function RailCard({ title, hint, live, children }: { title: string; hint?: string; live?: boolean; children: ReactNode }) {
@@ -29,7 +30,7 @@ export function RightRail() {
         <ClaimsCard />
       </RailCard>
       <RailCard title="Pressure tactics">
-        <p className="muted">Pressure tactics, like a deadline for today, are flagged here.</p>
+        <TacticsCard />
       </RailCard>
     </div>
   );

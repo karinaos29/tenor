@@ -1,0 +1,13 @@
+.eval { min-height: 100vh; background: var(--bg); padding: 24px 16px 48px; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.eval__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.eval__title { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 800; }
+.eval__data, .eval__run { margin: 0; font-size: 15px; max-width: 60em; }
+.eval__section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.eval__scroll { overflow-x: auto; }
+.eval__table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.eval__table th, .eval__table td { text-align: left; padding: 8px 12px 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.eval__table thead th { border-top: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+.eval__table tbody th { font-weight: 600; }
+.eval__table .numbers { white-space: nowrap; }
+.eval__note { margin: 0; font-size: 13px; }
+.eval__tag { font-size: 13px; }

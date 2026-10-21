@@ -1,19 +1,21 @@
 """Suggestion engine + risk score: scored rules, fully deterministic.
 
-Merges checked claims, research, and offer changes (tactics join in M4) into ranked
+Merges checked claims, research, and offer changes and pressure tactics into ranked
 suggestions: "say this" lines (fixed first-person templates) and research cards. At most
 four are visible, highest priority first; the rest are kept as `earlier` for the memo.
 "Say this" lines expire after `say_ttl_s` unless the same signal fires again.
 
 The risk score is a sum of listed reasons, capped at 100. The LLM is not involved.
 
-Consumes: ClaimChecked, ResearchReady, OfferUpdated, OfferChanged, ChecksClosed, ResearchClosed.
+Consumes: ClaimChecked, ResearchReady, OfferUpdated, OfferChanged, TacticFlagged, and the
+ChecksClosed / ResearchClosed / TacticsClosed end markers.
 Publishes: SuggestionsUpdated, RiskUpdated.
 """
 
 import asyncio
 from datetime import timedelta
 
+from detector.taxonomy import BY_ID
 from pipeline.bus import EventBus
 from pipeline.events import (
     ChecksClosed,
@@ -29,6 +31,9 @@ from pipeline.events import (
     RiskUpdated,
     Suggestion,
     SuggestionsUpdated,
+    TacticFlag,
+    TacticFlagged,
+    TacticsClosed,
     utc_now,
 )
 
@@ -36,6 +41,12 @@ MAX_VISIBLE = 4
 MAX_SAY_THIS = 2  # what to do now (top) + evidence (research) below, as in the wireframe
 RISKY_PAYMENTS = {"Bank transfer", "Wire transfer", "Crypto", "Gift cards"}
 SAME_DAY = ("today", "tonight", "this afternoon", "this evening", "end of day")
+
+# Tactic risk points, set a priori for "calm by default" (see docs/decisions.md): a mild,
+# classifier-only flag is shown but adds little; eight of them still stay under "medium".
+TACTIC_POINTS = {"strong": 15, "mild": 3}
+# Tactics that share a "say this" line and risk reason with an M3 signal, so they don't count twice.
+SHARED_KEYS = {"urgency": ("say-deadline", "deadline"), "guarantee": ("say-guarantee", "guarantee")}
 
 PERIOD_PHRASE = {
     "last 13 weeks": "Over the last three months",
@@ -58,18 +69,29 @@ def level_for(score: int) -> RiskLevel:
 
 
 class SuggestionEngine:
-    def __init__(self, bus: EventBus, *, call_id: str = "", say_ttl_s: float = 120.0, tick_s: float = 2.0) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        *,
+        call_id: str = "",
+        say_ttl_s: float = 120.0,
+        tick_s: float = 2.0,
+        wait_for: tuple[str, ...] = ("checks", "research"),
+    ) -> None:
         self.bus = bus
         self.call_id = call_id
         self.say_ttl = timedelta(seconds=say_ttl_s)
         self.tick_s = tick_s
-        self._sub = bus.subscribe(ChecksClosed, ClaimChecked, OfferChanged, OfferUpdated, ResearchClosed, ResearchReady)
+        self._sub = bus.subscribe(
+            ChecksClosed, ClaimChecked, OfferChanged, OfferUpdated, ResearchClosed, ResearchReady, TacticFlagged, TacticsClosed
+        )
         self._items: dict[str, Suggestion] = {}
         self._expired: dict[str, Suggestion] = {}
         self._reasons: dict[str, RiskReason] = {}
         self._firm_unregistered = False
         self._payment: str | None = None
         self._closed: set[str] = set()
+        self._wait_for = set(wait_for)  # end markers to wait for; the session adds "tactics"
         self._last: tuple | None = None
         self._last_risk: tuple | None = None
         # Risk is shown only once something has been checked, so "Low" never means "nothing looked at yet".
@@ -77,7 +99,7 @@ class SuggestionEngine:
 
     async def run(self) -> None:
         events = self._sub.__aiter__()
-        while self._closed != {"checks", "research"}:
+        while not self._wait_for <= self._closed:
             try:
                 event = await asyncio.wait_for(events.__anext__(), timeout=self.tick_s)
             except TimeoutError:
@@ -99,6 +121,11 @@ class SuggestionEngine:
                 self._closed.add("checks")
             elif isinstance(event, ResearchClosed):
                 self._closed.add("research")
+            elif isinstance(event, TacticFlagged):
+                self._assessed = True
+                self._on_tactic(event.flag)
+            elif isinstance(event, TacticsClosed):
+                self._closed.add("tactics")
             self._expire()
         self._publish(force=True)
         self._sub.close()
@@ -114,7 +141,11 @@ class SuggestionEngine:
         )  # fmt: skip
 
     def _risk(self, key: str, label: str, points: int) -> None:
-        self._reasons[key] = RiskReason(label=label, points=points)
+        """Add a reason, or raise its points. A reason never loses points (a strong urgency
+        flag must not be overwritten by the smaller deadline rule that fires later)."""
+        current = self._reasons.get(key)
+        if current is None or points >= current.points:
+            self._reasons[key] = RiskReason(label=label if current is None or points > current.points else current.label, points=points)
 
     def _on_claim(self, c: Claim) -> None:
         if c.status == "false" and c.metric in ("price_change", "return") and c.actual_value is not None:
@@ -165,6 +196,17 @@ class SuggestionEngine:
             text = "I only pay through my own bank, after I've checked your registration."
             self._say("say-payment", f"Payment by {self._payment.lower()}", text, 65, "Money sent this way is hard to get back.")
             self._risk("payment", f"Payment by {self._payment.lower()} to a firm that isn't registered", 10)
+
+    def _on_tactic(self, flag: TacticFlag) -> None:
+        tactic = BY_ID[flag.tactic]
+        say_key, risk_key = SHARED_KEYS.get(flag.tactic, (f"say-tactic-{flag.tactic}", f"tactic-{flag.tactic}"))
+        reason = f"The caller said: “{flag.quote}”"
+        self._say(say_key, tactic.label, tactic.say_this, tactic.priority, reason)
+        points = TACTIC_POINTS[flag.severity]
+        current = self._reasons.get(risk_key)
+        if current is None or points > current.points:
+            label = current.label if current is not None and risk_key in ("deadline", "guarantee") else f"Pressure: {tactic.label.lower()} ({flag.severity})"
+            self._risk(risk_key, label, max(points, current.points if current else 0))
 
     def _on_change(self, event: OfferChanged) -> None:
         c = event.change

@@ -1,6 +1,7 @@
 """Offer tracker: the current offer as structured state, with change detection.
 
-Only the caller's words fill the offer. A new value for a term that's already set
+Only the caller's words fill the offer; a ticker only mentioned in passing ("the next
+Apple") doesn't, and an LLM-found value can fill a gap but never overwrite a rule-found one. A new value for a term that's already set
 is a change ("10,000 shares, was 5,000"), kept in the history. The total is plain
 arithmetic (price x quantity), never generated.
 
@@ -70,6 +71,10 @@ class OfferTracker:
         field = FIELD_FOR_KIND.get(e.kind)
         if field is None or e.speaker != "caller":
             return
+        if e.kind == "ticker" and e.role != "offered":
+            return  # "the next Apple" is a comparison, not the thing on offer
+        if e.source == "llm" and getattr(self.offer, field) is not None:
+            return  # the LLM may fill a gap, never overwrite what the rules heard
         started = time.perf_counter()
         new = term_from(e)
         old: Term | None = getattr(self.offer, field)

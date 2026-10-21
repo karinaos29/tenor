@@ -1,0 +1,15 @@
+# Manipulative call (the dialogue drafted for Karina's own read-aloud test). Fictional firm
+# (Silverline Capital Partners) and company (Bluewater Lithium, BWLT). The Apple claim is
+# checked against live Finnhub data, so it only counts when market data is live.
+CALLER: Hi, is this Eszter? This is Mark Collins from Silverline Capital Partners.
+YOU: Yes, speaking. Who are you with again?
+CALLER: Silverline Capital Partners. We help people grow their savings. Have you heard of Bluewater Lithium? The ticker is B W L T.
+YOU: No, I haven't.
+CALLER: They supply batteries to big electric car makers. Apple shares are up 80 percent this year, and Bluewater is the next Apple.
+YOU: Really? Eighty percent?
+CALLER: Absolutely. Right now Bluewater is just $1.50 a share. I'd recommend two thousand shares.
+YOU: That's three thousand dollars. It's a lot for me.
+CALLER: I understand, but this price is only available until five p.m. today. Most of my clients are taking four thousand shares. It's risk-free.
+YOU: I'd like to think about it and talk to my daughter.
+CALLER: Honestly, I'd keep this between us. You can pay by wire transfer this afternoon.
+YOU: I don't make decisions on the same day. Please email me the details.

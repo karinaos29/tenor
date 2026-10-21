@@ -1,0 +1,46 @@
+{
+  "kind": "honest",
+  "hard_honest": false,
+  "risk": {
+    "max_level": "medium"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, is this Eszter? I'm Leon Brandt, from Westmere Federal Savings. You asked about government savings bonds at the branch last week.",
+      "tactics": []
+    },
+    {
+      "text": "Of course. Savings bonds are issued by the government, and they pay a fixed rate for a set term. You can buy them through our branch.",
+      "tactics": []
+    },
+    {
+      "text": "The rate is published on the government's website and updated each month. I'd check there for the figure that applies to you.",
+      "tactics": []
+    },
+    {
+      "text": "You can, but if you cash it before it's been held for a year, you don't earn interest for the last three months. The rules are on the official page.",
+      "tactics": []
+    },
+    {
+      "text": "There is an annual purchase limit per person, which is set by the government. I'll give you the exact amount in the printed information.",
+      "tactics": []
+    },
+    {
+      "text": "No, they are not linked to the stock market. The return is set when you buy, and the value doesn't move with shares.",
+      "tactics": []
+    },
+    {
+      "text": "Not at all. You're welcome to take the information away and read it when you like.",
+      "tactics": []
+    },
+    {
+      "text": "Yes, I'll put it in the post this afternoon. There's also a short explainer on the government site that's quite clear.",
+      "tactics": []
+    },
+    {
+      "text": "You're welcome, Eszter. Call the branch whenever you have questions.",
+      "tactics": []
+    }
+  ],
+  "false_claims": []
+}

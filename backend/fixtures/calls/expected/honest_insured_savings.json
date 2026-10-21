@@ -1,0 +1,46 @@
+{
+  "kind": "honest",
+  "hard_honest": true,
+  "risk": {
+    "max_level": "medium"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, Eszter? It's Priya Nair from Cedar Hollow Savings Bank. You asked about our savings accounts on our website, so I'm returning your enquiry.",
+      "tactics": []
+    },
+    {
+      "text": "Our standard savings account is a good fit for that. It's a simple account, and you can open it at any branch or online.",
+      "tactics": []
+    },
+    {
+      "text": "The rate for the twelve-month account is 4.1 percent a year, and it's fixed for the whole twelve months. It won't change during that time.",
+      "tactics": []
+    },
+    {
+      "text": "Deposits here are insured by the government up to the legal limit per depositor. The limit is shown on the disclosure sheet I'll send you.",
+      "tactics": []
+    },
+    {
+      "text": "You can withdraw early, but there's a small charge, and the rate for the remaining term is reduced. The exact terms are in the account agreement.",
+      "tactics": []
+    },
+    {
+      "text": "The minimum to open the account is five hundred dollars. There's no maximum set by us, though the deposit insurance limit still applies.",
+      "tactics": []
+    },
+    {
+      "text": "About fifteen minutes at a branch, or a little longer online. You don't have to decide today.",
+      "tactics": []
+    },
+    {
+      "text": "That's a sensible approach. I'll email you the disclosure sheet and the account agreement, and you can read them at your own pace.",
+      "tactics": []
+    },
+    {
+      "text": "After twelve months the account renews at the rate then on offer, which we'll tell you in writing before that date.",
+      "tactics": []
+    }
+  ],
+  "false_claims": []
+}

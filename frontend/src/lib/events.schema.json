@@ -8,11 +8,15 @@
     },
     "replayList": {
       "$ref": "#/$defs/ReplayList"
+    },
+    "evalResponse": {
+      "$ref": "#/$defs/EvalResponse"
     }
   },
   "required": [
     "event",
-    "replayList"
+    "replayList",
+    "evalResponse"
   ],
   "$defs": {
     "CallEnded": {
@@ -961,6 +965,91 @@
       "title": "SuggestionsUpdated",
       "type": "object"
     },
+    "TacticFlag": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tactic": {
+          "enum": [
+            "urgency",
+            "scarcity",
+            "social_proof",
+            "secrecy",
+            "guarantee",
+            "fomo_regret",
+            "skip_checks",
+            "authority"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "description": "Plain-words name shown to the user, e.g. 'Keeping it secret'",
+          "type": "string"
+        },
+        "quote": {
+          "description": "The caller's words that triggered it",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "mild",
+            "strong"
+          ],
+          "type": "string"
+        },
+        "utterance_id": {
+          "type": "string"
+        },
+        "score": {
+          "description": "Classifier probability (1.0 for a rule-only match)",
+          "type": "number"
+        },
+        "source": {
+          "enum": [
+            "classifier",
+            "rule",
+            "both"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "tactic",
+        "label",
+        "quote",
+        "severity",
+        "utterance_id",
+        "score",
+        "source"
+      ],
+      "title": "TacticFlag",
+      "type": "object"
+    },
+    "TacticFlagged": {
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "tactic.flagged",
+          "default": "tactic.flagged",
+          "type": "string"
+        },
+        "flag": {
+          "$ref": "#/$defs/TacticFlag"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "flag"
+      ],
+      "title": "TacticFlagged",
+      "type": "object"
+    },
     "Term": {
       "description": "One term of the offer and where it came from.",
       "properties": {
@@ -1207,6 +1296,7 @@
           "speakers.swap": "#/$defs/SpeakersSwap",
           "speakers.updated": "#/$defs/SpeakersUpdated",
           "suggestions.updated": "#/$defs/SuggestionsUpdated",
+          "tactic.flagged": "#/$defs/TacticFlagged",
           "transcriber.status": "#/$defs/TranscriberStatus",
           "utterance.final": "#/$defs/UtteranceFinal",
           "utterance.partial": "#/$defs/UtterancePartial"
@@ -1267,6 +1357,9 @@
         },
         {
           "$ref": "#/$defs/RiskUpdated"
+        },
+        {
+          "$ref": "#/$defs/TacticFlagged"
         }
       ],
       "title": "TenorEvent"
@@ -1304,6 +1397,285 @@
         "replays"
       ],
       "title": "ReplayList",
+      "type": "object"
+    },
+    "CallResult": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "manipulative",
+            "honest"
+          ],
+          "type": "string"
+        },
+        "hard_honest": {
+          "type": "boolean"
+        },
+        "expected": {
+          "description": "e.g. 'high or critical' / 'low or medium'",
+          "type": "string"
+        },
+        "risk_score": {
+          "type": "integer"
+        },
+        "risk_level": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "false_claims_expected": {
+          "type": "integer"
+        },
+        "false_claims_caught": {
+          "type": "integer"
+        },
+        "tactic_recall": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tactic_precision": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_visible_suggestions": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "hard_honest",
+        "expected",
+        "risk_score",
+        "risk_level",
+        "ok",
+        "false_claims_expected",
+        "false_claims_caught",
+        "tactic_recall",
+        "tactic_precision",
+        "max_visible_suggestions"
+      ],
+      "title": "CallResult",
+      "type": "object"
+    },
+    "DetectorScores": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/MetricRow"
+          },
+          "type": "array"
+        },
+        "micro": {
+          "$ref": "#/$defs/MetricRow"
+        },
+        "any_tactic": {
+          "$ref": "#/$defs/MetricRow"
+        },
+        "latency_ms_median": {
+          "type": "number"
+        },
+        "note": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "rows",
+        "micro",
+        "any_tactic",
+        "latency_ms_median",
+        "note"
+      ],
+      "title": "DetectorScores",
+      "type": "object"
+    },
+    "EvalReport": {
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "data": {
+          "description": "What the benchmark is made of, in plain words",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/Target"
+          },
+          "type": "array"
+        },
+        "detectors": {
+          "items": {
+            "$ref": "#/$defs/DetectorScores"
+          },
+          "type": "array"
+        },
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/CallResult"
+          },
+          "type": "array"
+        },
+        "latency": {
+          "items": {
+            "$ref": "#/$defs/StageLatency"
+          },
+          "type": "array"
+        },
+        "audio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run_id",
+        "created_at",
+        "commit",
+        "note",
+        "data",
+        "targets",
+        "detectors",
+        "calls",
+        "latency",
+        "audio"
+      ],
+      "title": "EvalReport",
+      "type": "object"
+    },
+    "MetricRow": {
+      "properties": {
+        "tactic": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "precision": {
+          "type": "number"
+        },
+        "recall": {
+          "type": "number"
+        },
+        "f1": {
+          "type": "number"
+        },
+        "support": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tactic",
+        "label",
+        "precision",
+        "recall",
+        "f1",
+        "support"
+      ],
+      "title": "MetricRow",
+      "type": "object"
+    },
+    "StageLatency": {
+      "properties": {
+        "stage": {
+          "type": "string"
+        },
+        "n": {
+          "type": "integer"
+        },
+        "median_ms": {
+          "type": "number"
+        },
+        "p95_ms": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "stage",
+        "n",
+        "median_ms",
+        "p95_ms"
+      ],
+      "title": "StageLatency",
+      "type": "object"
+    },
+    "Target": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "measured": {
+          "type": "string"
+        },
+        "met": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "label",
+        "target",
+        "measured",
+        "met"
+      ],
+      "title": "Target",
+      "type": "object"
+    },
+    "EvalResponse": {
+      "properties": {
+        "report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvalReport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "report"
+      ],
+      "title": "EvalResponse",
       "type": "object"
     }
   }

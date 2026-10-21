@@ -1,0 +1,75 @@
+{
+  "kind": "manipulative",
+  "hard_honest": false,
+  "risk": {
+    "min_level": "high"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, Eszter? This is Gavin Marsh from Sterling Oak Wealth Partners. I'm calling about your pension.",
+      "tactics": []
+    },
+    {
+      "text": "Most people are, until they see what they're missing. We manage a small group of private pension transfers. Your pension could be working much harder.",
+      "tactics": [
+        "fomo_regret"
+      ]
+    },
+    {
+      "text": "Simply move your pension into our special fund. Our experts have a view on the market that the big banks just don't have.",
+      "tactics": [
+        "authority"
+      ]
+    },
+    {
+      "text": "Our senior analysts say Brightmoor Lithium, ticker B M L I, is about to take off. The shares have risen forty-five percent since January, and insiders are buying.",
+      "tactics": [
+        "authority"
+      ]
+    },
+    {
+      "text": "It is. And our fund is guaranteed to grow by at least twelve percent a year, so your pension is safe with us.",
+      "tactics": [
+        "guarantee"
+      ]
+    },
+    {
+      "text": "Not with our approach. We only take a few clients each quarter, so places in the fund are strictly limited.",
+      "tactics": [
+        "scarcity"
+      ]
+    },
+    {
+      "text": "Only four, and most of our clients took the whole allocation within a week. Please sign the transfer form today.",
+      "tactics": [
+        "scarcity",
+        "social_proof",
+        "urgency"
+      ]
+    },
+    {
+      "text": "You don't need to read all that. Our paperwork is just legal boilerplate, and I'll walk you through everything on the call.",
+      "tactics": [
+        "skip_checks"
+      ]
+    },
+    {
+      "text": "I'd leave the adviser out of this for now. They rarely understand a special opportunity like this one.",
+      "tactics": [
+        "secrecy"
+      ]
+    },
+    {
+      "text": "Eszter, the four places won't last. Shall I send the transfer form to your email?",
+      "tactics": [
+        "scarcity"
+      ]
+    }
+  ],
+  "false_claims": [
+    {
+      "text_contains": "risen forty-five percent since January",
+      "metric": "price_change"
+    }
+  ]
+}

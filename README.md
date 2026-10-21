@@ -4,7 +4,8 @@ A live copilot for high-pressure investment sales calls. Put the call on speaker
 
 Prototype for the Hiya Voice AI Challenge. No real telephony: microphone input and recorded-call replay only.
 
-> **Status: M3 (Verify).** Live transcript with "You" and "Caller" labels; the offer card fills in as the caller talks; claims are checked against market data ("Doesn't match data", "No evidence found", "Couldn't verify"); the firm is looked up; up to four suggestions (what to say, plus the evidence) and a risk level update live. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
+> **Status: M4 (Detect).** Pressure tactics are flagged live, and an evaluation screen shows how Tenor is measured.
+> Earlier: Live transcript with "You" and "Caller" labels; the offer card fills in as the caller talks; claims are checked against market data ("Doesn't match data", "No evidence found", "Couldn't verify"); the firm is looked up; up to four suggestions (what to say, plus the evidence) and a risk level update live. Milestone write-ups are in [`docs/milestones/`](docs/milestones/); the design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Run
 
@@ -64,10 +65,25 @@ Market data: real tickers come from Finnhub's free tier; the fictional company i
 
 After changing an event model in `backend/pipeline/events.py`, regenerate the TypeScript types with `npm run gen:types` (frontend/). A backend test fails until you do.
 
+## Evaluate
+
+From `backend/` (trains the tactic classifier, then measures it against the held-out lines, the 12 test calls and, with `--audio`, real-time replays):
+
+```bash
+uv run python ../eval/train_detector.py
+```
+
+```bash
+uv run python ../eval/run_eval.py --audio --live-data
+```
+
+Results go to `eval/results/latest.json` (shown on the app's "How Tenor is measured" screen) and `eval/results/eval.sqlite`. The benchmark is synthetic; see `docs/milestones/m4.md` for the numbers and caveats.
+
 ## Docs
 
 - [`docs/architecture.md`](docs/architecture.md): components, events, UI, milestones
 - [`CLAUDE.md`](CLAUDE.md): rules and stack
+- [`docs/tactics.md`](docs/tactics.md): the pressure-tactic taxonomy
 - [`docs/decisions.md`](docs/decisions.md): decisions log (what, why, alternative)
 - [`docs/milestones/`](docs/milestones/): one write-up per milestone
 - [`ai.md`](ai.md): which AI tools and models were used to build Tenor, and which ones Tenor uses at runtime

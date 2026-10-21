@@ -1,7 +1,106 @@
 {
   "note": "Fictional firms used in the scripted calls. Never add real firms here.",
   "firms": [
-    {"name": "Hartwell & Crane", "aliases": ["Hartwell & Crane", "Hartwell and Crane", "Hartwell Crane"], "fictional": true},
-    {"name": "Riverside Savings Bank", "aliases": ["Riverside Savings Bank", "Riverside Savings"], "fictional": true}
+    {
+      "name": "Hartwell & Crane",
+      "aliases": [
+        "Hartwell & Crane",
+        "Hartwell and Crane",
+        "Hartwell Crane"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Riverside Savings Bank",
+      "aliases": [
+        "Riverside Savings Bank",
+        "Riverside Savings"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Beacon Ridge Asset Recovery",
+      "aliases": [
+        "Beacon Ridge Asset Recovery",
+        "Beacon Ridge Recovery",
+        "Beacon Ridge"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Sterling Oak Wealth Partners",
+      "aliases": [
+        "Sterling Oak Wealth Partners",
+        "Sterling Oak Wealth",
+        "Sterling Oak"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Golden Meridian Bullion Trust",
+      "aliases": [
+        "Golden Meridian Bullion Trust",
+        "Golden Meridian Bullion",
+        "Golden Meridian"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Halden Ridge Savings Bank",
+      "aliases": [
+        "Halden Ridge Savings Bank",
+        "Halden Ridge"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Cedar Hollow Savings Bank",
+      "aliases": [
+        "Cedar Hollow Savings Bank",
+        "Cedar Hollow"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Corvin Lane Financial Advisers",
+      "aliases": [
+        "Corvin Lane Financial Advisers",
+        "Corvin Lane"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Tarrow Mutual Insurance",
+      "aliases": [
+        "Tarrow Mutual Insurance",
+        "Tarrow Mutual"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Alderbrook Pension Services",
+      "aliases": [
+        "Alderbrook Pension Services",
+        "Alderbrook"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Westmere Federal Savings",
+      "aliases": [
+        "Westmere Federal Savings",
+        "Westmere Federal"
+      ],
+      "fictional": true
+    },
+    {
+      "name": "Silverline Capital Partners",
+      "aliases": [
+        "Silverline Capital Partners",
+        "Silverline Capital",
+        "Silverline"
+      ],
+      "fictional": true
+    }
   ]
 }

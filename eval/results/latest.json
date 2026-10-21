@@ -1,0 +1,658 @@
+{
+  "run_id": "ed8c53c3",
+  "created_at": "2026-10-21T00:13:09.258615Z",
+  "commit": "252a19e",
+  "note": "80 held-out lines; 12 test calls (5 manipulative, 7 honest); audio replays included; live Finnhub",
+  "data": "Synthetic benchmark. Training lines were written by Claude Sonnet; the held-out test lines and 9 of the 12 test calls by Claude Haiku from a separate brief, without access to the training set; 3 calls by Claude Opus. All calls are scripted and voiced by text-to-speech, not real phone calls. One round of feedback: after the first run, 130 training lines were added for the two kinds of honest speech the classifier over-flagged (short small talk, same-topic opposites); test lines were not changed, and thresholds are set on training data only.",
+  "targets": [
+    {
+      "label": "Pressure-tactic precision (held-out lines)",
+      "target": "≥ 0.80",
+      "measured": "0.84",
+      "met": true
+    },
+    {
+      "label": "Pressure-tactic recall (held-out lines)",
+      "target": "≥ 0.80",
+      "measured": "0.85",
+      "met": true
+    },
+    {
+      "label": "Honest calls rated high risk",
+      "target": "0 of 7",
+      "measured": "0 of 7",
+      "met": true
+    },
+    {
+      "label": "Manipulative calls rated high or critical",
+      "target": "5 of 5",
+      "measured": "5 of 5",
+      "met": true
+    },
+    {
+      "label": "Scripted false claims caught",
+      "target": "all",
+      "measured": "7 of 7",
+      "met": true
+    },
+    {
+      "label": "Claim spoken → verdict (median)",
+      "target": "≤ 2 s",
+      "measured": "0.70 s (n=15)",
+      "met": true
+    },
+    {
+      "label": "Suggestions visible at once",
+      "target": "≤ 4",
+      "measured": "4",
+      "met": true
+    },
+    {
+      "label": "Memo ready after hang-up",
+      "target": "≤ 60 s",
+      "measured": "arrives in M5",
+      "met": null
+    }
+  ],
+  "detectors": [
+    {
+      "name": "Rules only",
+      "rows": [
+        {
+          "tactic": "urgency",
+          "label": "Rushing you",
+          "precision": 1.0,
+          "recall": 0.222,
+          "f1": 0.364,
+          "support": 9
+        },
+        {
+          "tactic": "scarcity",
+          "label": "“Rare chance”",
+          "precision": 1.0,
+          "recall": 0.333,
+          "f1": 0.5,
+          "support": 6
+        },
+        {
+          "tactic": "social_proof",
+          "label": "“Everyone's doing it”",
+          "precision": 1.0,
+          "recall": 0.167,
+          "f1": 0.286,
+          "support": 6
+        },
+        {
+          "tactic": "secrecy",
+          "label": "Keeping it secret",
+          "precision": 1.0,
+          "recall": 0.333,
+          "f1": 0.5,
+          "support": 6
+        },
+        {
+          "tactic": "guarantee",
+          "label": "Promises no risk",
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.857,
+          "support": 8
+        },
+        {
+          "tactic": "fomo_regret",
+          "label": "Fear of missing out",
+          "precision": 1.0,
+          "recall": 0.833,
+          "f1": 0.909,
+          "support": 6
+        },
+        {
+          "tactic": "skip_checks",
+          "label": "Skipping the checks",
+          "precision": 1.0,
+          "recall": 0.429,
+          "f1": 0.6,
+          "support": 7
+        },
+        {
+          "tactic": "authority",
+          "label": "Borrowed authority",
+          "precision": 1.0,
+          "recall": 0.167,
+          "f1": 0.286,
+          "support": 6
+        }
+      ],
+      "micro": {
+        "tactic": "micro",
+        "label": "All tactics (micro)",
+        "precision": 1.0,
+        "recall": 0.407,
+        "f1": 0.579,
+        "support": 54
+      },
+      "any_tactic": {
+        "tactic": "any",
+        "label": "Any tactic vs. none",
+        "precision": 1.0,
+        "recall": 0.489,
+        "f1": 0.657,
+        "support": 45
+      },
+      "latency_ms_median": 0.1,
+      "note": "High-precision patterns per tactic"
+    },
+    {
+      "name": "Classifier only",
+      "rows": [
+        {
+          "tactic": "urgency",
+          "label": "Rushing you",
+          "precision": 0.7,
+          "recall": 0.778,
+          "f1": 0.737,
+          "support": 9
+        },
+        {
+          "tactic": "scarcity",
+          "label": "“Rare chance”",
+          "precision": 0.833,
+          "recall": 0.833,
+          "f1": 0.833,
+          "support": 6
+        },
+        {
+          "tactic": "social_proof",
+          "label": "“Everyone's doing it”",
+          "precision": 0.857,
+          "recall": 1.0,
+          "f1": 0.923,
+          "support": 6
+        },
+        {
+          "tactic": "secrecy",
+          "label": "Keeping it secret",
+          "precision": 1.0,
+          "recall": 0.667,
+          "f1": 0.8,
+          "support": 6
+        },
+        {
+          "tactic": "guarantee",
+          "label": "Promises no risk",
+          "precision": 0.833,
+          "recall": 0.625,
+          "f1": 0.714,
+          "support": 8
+        },
+        {
+          "tactic": "fomo_regret",
+          "label": "Fear of missing out",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        {
+          "tactic": "skip_checks",
+          "label": "Skipping the checks",
+          "precision": 0.571,
+          "recall": 0.571,
+          "f1": 0.571,
+          "support": 7
+        },
+        {
+          "tactic": "authority",
+          "label": "Borrowed authority",
+          "precision": 1.0,
+          "recall": 0.833,
+          "f1": 0.909,
+          "support": 6
+        }
+      ],
+      "micro": {
+        "tactic": "micro",
+        "label": "All tactics (micro)",
+        "precision": 0.824,
+        "recall": 0.778,
+        "f1": 0.8,
+        "support": 54
+      },
+      "any_tactic": {
+        "tactic": "any",
+        "label": "Any tactic vs. none",
+        "precision": 0.886,
+        "recall": 0.867,
+        "f1": 0.876,
+        "support": 45
+      },
+      "latency_ms_median": 8.71,
+      "note": "all-MiniLM-L6-v2 embeddings + logistic regression, local CPU"
+    },
+    {
+      "name": "Tenor detector (classifier + rules)",
+      "rows": [
+        {
+          "tactic": "urgency",
+          "label": "Rushing you",
+          "precision": 0.7,
+          "recall": 0.778,
+          "f1": 0.737,
+          "support": 9
+        },
+        {
+          "tactic": "scarcity",
+          "label": "“Rare chance”",
+          "precision": 0.833,
+          "recall": 0.833,
+          "f1": 0.833,
+          "support": 6
+        },
+        {
+          "tactic": "social_proof",
+          "label": "“Everyone's doing it”",
+          "precision": 0.857,
+          "recall": 1.0,
+          "f1": 0.923,
+          "support": 6
+        },
+        {
+          "tactic": "secrecy",
+          "label": "Keeping it secret",
+          "precision": 1.0,
+          "recall": 0.667,
+          "f1": 0.8,
+          "support": 6
+        },
+        {
+          "tactic": "guarantee",
+          "label": "Promises no risk",
+          "precision": 0.889,
+          "recall": 1.0,
+          "f1": 0.941,
+          "support": 8
+        },
+        {
+          "tactic": "fomo_regret",
+          "label": "Fear of missing out",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        {
+          "tactic": "skip_checks",
+          "label": "Skipping the checks",
+          "precision": 0.625,
+          "recall": 0.714,
+          "f1": 0.667,
+          "support": 7
+        },
+        {
+          "tactic": "authority",
+          "label": "Borrowed authority",
+          "precision": 1.0,
+          "recall": 0.833,
+          "f1": 0.909,
+          "support": 6
+        }
+      ],
+      "micro": {
+        "tactic": "micro",
+        "label": "All tactics (micro)",
+        "precision": 0.836,
+        "recall": 0.852,
+        "f1": 0.844,
+        "support": 54
+      },
+      "any_tactic": {
+        "tactic": "any",
+        "label": "Any tactic vs. none",
+        "precision": 0.891,
+        "recall": 0.911,
+        "f1": 0.901,
+        "support": 45
+      },
+      "latency_ms_median": 8.81,
+      "note": "What runs live during a call"
+    },
+    {
+      "name": "LLM zero-shot (Gemini)",
+      "rows": [
+        {
+          "tactic": "urgency",
+          "label": "Rushing you",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 9
+        },
+        {
+          "tactic": "scarcity",
+          "label": "“Rare chance”",
+          "precision": 0.667,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 6
+        },
+        {
+          "tactic": "social_proof",
+          "label": "“Everyone's doing it”",
+          "precision": 0.6,
+          "recall": 1.0,
+          "f1": 0.75,
+          "support": 6
+        },
+        {
+          "tactic": "secrecy",
+          "label": "Keeping it secret",
+          "precision": 0.857,
+          "recall": 1.0,
+          "f1": 0.923,
+          "support": 6
+        },
+        {
+          "tactic": "guarantee",
+          "label": "Promises no risk",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 8
+        },
+        {
+          "tactic": "fomo_regret",
+          "label": "Fear of missing out",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        {
+          "tactic": "skip_checks",
+          "label": "Skipping the checks",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 7
+        },
+        {
+          "tactic": "authority",
+          "label": "Borrowed authority",
+          "precision": 0.857,
+          "recall": 1.0,
+          "f1": 0.923,
+          "support": 6
+        }
+      ],
+      "micro": {
+        "tactic": "micro",
+        "label": "All tactics (micro)",
+        "precision": 0.857,
+        "recall": 1.0,
+        "f1": 0.923,
+        "support": 54
+      },
+      "any_tactic": {
+        "tactic": "any",
+        "label": "Any tactic vs. none",
+        "precision": 0.978,
+        "recall": 1.0,
+        "f1": 0.989,
+        "support": 45
+      },
+      "latency_ms_median": 661.7,
+      "note": "Gemini zero-shot, hedged gemini-3.5-flash-lite,gemini-3.1-flash-lite; 0 of 80 lines got no answer (counted as none)"
+    }
+  ],
+  "calls": [
+    {
+      "name": "honest_bond_info",
+      "kind": "honest",
+      "hard_honest": false,
+      "expected": "medium or below",
+      "risk_score": 3,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": 0.0,
+      "max_visible_suggestions": 2
+    },
+    {
+      "name": "honest_cd_deadline",
+      "kind": "honest",
+      "hard_honest": true,
+      "expected": "medium or below",
+      "risk_score": 33,
+      "risk_level": "medium",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": 0.0,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "honest_insurance_review",
+      "kind": "honest",
+      "hard_honest": false,
+      "expected": "medium or below",
+      "risk_score": 3,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": 0.0,
+      "max_visible_suggestions": 2
+    },
+    {
+      "name": "honest_insured_savings",
+      "kind": "honest",
+      "hard_honest": true,
+      "expected": "medium or below",
+      "risk_score": 21,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": 0.0,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "honest_many_customers",
+      "kind": "honest",
+      "hard_honest": true,
+      "expected": "medium or below",
+      "risk_score": 6,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": 0.0,
+      "max_visible_suggestions": 3
+    },
+    {
+      "name": "honest_pension_checkin",
+      "kind": "honest",
+      "hard_honest": false,
+      "expected": "medium or below",
+      "risk_score": 0,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": null,
+      "max_visible_suggestions": 1
+    },
+    {
+      "name": "honest_voo",
+      "kind": "honest",
+      "hard_honest": false,
+      "expected": "medium or below",
+      "risk_score": 21,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": null,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "scam_crypto_recovery",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 98,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 1,
+      "false_claims_caught": 1,
+      "tactic_recall": 0.4,
+      "tactic_precision": 0.667,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "scam_gold",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 1,
+      "false_claims_caught": 1,
+      "tactic_recall": 0.5,
+      "tactic_precision": 1.0,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "scam_kstl",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 2,
+      "false_claims_caught": 2,
+      "tactic_recall": null,
+      "tactic_precision": null,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "scam_pension_transfer",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 1,
+      "false_claims_caught": 1,
+      "tactic_recall": 0.818,
+      "tactic_precision": 0.75,
+      "max_visible_suggestions": 4
+    },
+    {
+      "name": "scam_silverline",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 2,
+      "false_claims_caught": 2,
+      "tactic_recall": 1.0,
+      "tactic_precision": 0.714,
+      "max_visible_suggestions": 4
+    }
+  ],
+  "latency": [
+    {
+      "stage": "check.claim",
+      "n": 15,
+      "median_ms": 0.0,
+      "p95_ms": 0.1
+    },
+    {
+      "stage": "claim.flag_e2e",
+      "n": 15,
+      "median_ms": 702.0,
+      "p95_ms": 2253.8
+    },
+    {
+      "stage": "detector",
+      "n": 311,
+      "median_ms": 19.8,
+      "p95_ms": 29.9
+    },
+    {
+      "stage": "extractor.rules",
+      "n": 380,
+      "median_ms": 0.7,
+      "p95_ms": 1.2
+    },
+    {
+      "stage": "labeler",
+      "n": 593,
+      "median_ms": 0.2,
+      "p95_ms": 0.5
+    },
+    {
+      "stage": "llm.extract",
+      "n": 20,
+      "median_ms": 2137.1,
+      "p95_ms": 4363.7
+    },
+    {
+      "stage": "llm.wording",
+      "n": 15,
+      "median_ms": 1016.4,
+      "p95_ms": 3824.7
+    },
+    {
+      "stage": "offer",
+      "n": 42,
+      "median_ms": 0.1,
+      "p95_ms": 0.2
+    },
+    {
+      "stage": "research.prefetch",
+      "n": 19,
+      "median_ms": 0.0,
+      "p95_ms": 287.5
+    },
+    {
+      "stage": "research.wording",
+      "n": 15,
+      "median_ms": 1028.0,
+      "p95_ms": 3837.6
+    },
+    {
+      "stage": "stt.connect",
+      "n": 12,
+      "median_ms": 566.8,
+      "p95_ms": 705.0
+    },
+    {
+      "stage": "stt.final_lag",
+      "n": 391,
+      "median_ms": 692.7,
+      "p95_ms": 1999.6
+    },
+    {
+      "stage": "stt.partial_lag",
+      "n": 1089,
+      "median_ms": 259.8,
+      "p95_ms": 583.7
+    }
+  ],
+  "audio": true
+}

@@ -1,0 +1,20 @@
+# Honest call (HARD). Fictional adviser firm (Corvin Lane Financial Advisers). "Many customers choose a balanced fund" said neutrally; encourages talking to family. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, Eszter? I'm Sam Okafor, an adviser with Corvin Lane Financial Advisers. We spoke at the library talk last spring. Is now a good time?
+YOU: Yes, I remember. Go ahead.
+CALLER: Thank you. You mentioned wanting a steady way to grow your savings without a lot of ups and downs.
+YOU: Yes, that's right. I'm retired, so I can't afford big losses.
+CALLER: Understood. Many of our customers choose a balanced fund for that reason. It holds a mix of shares and bonds.
+YOU: What would be the fees on that?
+CALLER: The annual charge is about point eight percent of the amount invested. I'll put the exact figure in writing for you.
+YOU: Could I lose money in a fund like that?
+CALLER: Yes. Its value can fall, especially in a bad year. That's why it works best for money you won't need for several years.
+YOU: I see. How much would I have to put in?
+CALLER: There's no set amount. Some people start with a few thousand, others with less, and you can add to it later.
+YOU: I'd like to talk it over with my daughter before I do anything.
+CALLER: That's a good idea. Many people find it helpful to include family in these decisions, and she's welcome to join a call with us.
+YOU: Thank you. Can you send me the fund's factsheet?
+CALLER: I'll post it with the fee schedule this week. It's also available on the fund provider's website.
+YOU: Good. Is there anything I need to do now?
+CALLER: No. Nothing is needed from you today. Call me when you've had a chance to read it.

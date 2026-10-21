@@ -63,6 +63,22 @@ MACOS_VOICES = {
 }
 
 
+# Callers for the M4 test calls get distinct male voices; "You" stays female, so voices
+# differ by gender (diarization merged two similar voices in M2).
+MALE_CALLERS = ["Fred", "Reed (English (US))", "Ralph", "Eddy (English (US))", "Rocko (English (US))", "Grandpa (English (US))"]
+
+
+def macos_voices(name: str) -> dict[str, str]:
+    if name in MACOS_VOICES:
+        return MACOS_VOICES[name]
+    index = sum(map(ord, name)) % len(MALE_CALLERS)
+    return {"CALLER": MALE_CALLERS[index], "YOU": "Samantha"}
+
+
+def all_scripts() -> list[str]:
+    return sorted(p.stem for p in (HERE / "scripts").glob("*.txt"))
+
+
 def read_script(name: str) -> list[tuple[str, str]]:
     turns = []
     for line in (HERE / "scripts" / f"{name}.txt").read_text().splitlines():
@@ -134,7 +150,8 @@ async def _request(client: genai.Client, voice: str, style: str, text: str):  # 
 async def make(client: genai.Client | None, name: str) -> None:
     turns = read_script(name)
     if client is None:
-        audio = [say_speak(MACOS_VOICES[name][role], text) for role, text in turns]
+        voices_for = macos_voices(name)
+        audio = [say_speak(voices_for[role], text) for role, text in turns]
     else:
         voices = VOICES[name]
         audio = await asyncio.gather(*(speak(client, *voices[role], text) for role, text in turns))
@@ -163,7 +180,8 @@ async def main(names: list[str], voices: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("names", nargs="*", default=list(VOICES))
+    parser.add_argument("names", nargs="*", default=None, help="scripts to voice (default: all; Gemini voices only exist for the M2 calls)")
     parser.add_argument("--voices", choices=["gemini", "macos"], default="gemini")
     args = parser.parse_args()
-    asyncio.run(main(args.names, args.voices))
+    names = args.names or (all_scripts() if args.voices == "macos" else list(VOICES))
+    asyncio.run(main(names, args.voices))

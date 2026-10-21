@@ -1,0 +1,46 @@
+{
+  "kind": "honest",
+  "hard_honest": true,
+  "risk": {
+    "max_level": "medium"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, Eszter? I'm Sam Okafor, an adviser with Corvin Lane Financial Advisers. We spoke at the library talk last spring. Is now a good time?",
+      "tactics": []
+    },
+    {
+      "text": "Thank you. You mentioned wanting a steady way to grow your savings without a lot of ups and downs.",
+      "tactics": []
+    },
+    {
+      "text": "Understood. Many of our customers choose a balanced fund for that reason. It holds a mix of shares and bonds.",
+      "tactics": []
+    },
+    {
+      "text": "The annual charge is about point eight percent of the amount invested. I'll put the exact figure in writing for you.",
+      "tactics": []
+    },
+    {
+      "text": "Yes. Its value can fall, especially in a bad year. That's why it works best for money you won't need for several years.",
+      "tactics": []
+    },
+    {
+      "text": "There's no set amount. Some people start with a few thousand, others with less, and you can add to it later.",
+      "tactics": []
+    },
+    {
+      "text": "That's a good idea. Many people find it helpful to include family in these decisions, and she's welcome to join a call with us.",
+      "tactics": []
+    },
+    {
+      "text": "I'll post it with the fee schedule this week. It's also available on the fund provider's website.",
+      "tactics": []
+    },
+    {
+      "text": "No. Nothing is needed from you today. Call me when you've had a chance to read it.",
+      "tactics": []
+    }
+  ],
+  "false_claims": []
+}

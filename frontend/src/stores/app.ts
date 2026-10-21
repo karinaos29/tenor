@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Screen = "start" | "live";
+export type Screen = "start" | "live" | "eval";
 
 interface AppStore {
   screen: Screen;

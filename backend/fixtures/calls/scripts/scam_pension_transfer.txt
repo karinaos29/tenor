@@ -1,0 +1,23 @@
+# Manipulative call. Fictional firm (Sterling Oak Wealth Partners) and fictional company (Brightmoor Lithium, BMLI). All names are invented.
+# The caller pushes a pension move into a "special" fund. The Brightmoor performance claim is false in eval/data/new_fixtures.json.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, Eszter? This is Gavin Marsh from Sterling Oak Wealth Partners. I'm calling about your pension.
+YOU: My pension? I'm happy with what I have, thank you.
+CALLER: Most people are, until they see what they're missing. We manage a small group of private pension transfers. Your pension could be working much harder.
+YOU: I don't really know much about investing. What would I have to do?
+CALLER: Simply move your pension into our special fund. Our experts have a view on the market that the big banks just don't have.
+YOU: What sort of view?
+CALLER: Our senior analysts say Brightmoor Lithium, ticker B M L I, is about to take off. The shares have risen forty-five percent since January, and insiders are buying.
+YOU: Forty-five percent? That's a lot.
+CALLER: It is. And our fund is guaranteed to grow by at least twelve percent a year, so your pension is safe with us.
+YOU: Guaranteed? Pensions can go down too, can't they?
+CALLER: Not with our approach. We only take a few clients each quarter, so places in the fund are strictly limited.
+YOU: How many places are left?
+CALLER: Only four, and most of our clients took the whole allocation within a week. Please sign the transfer form today.
+YOU: I'd like to see the fund's documents and the fees first.
+CALLER: You don't need to read all that. Our paperwork is just legal boilerplate, and I'll walk you through everything on the call.
+YOU: I still want to check it with my financial adviser before I move anything.
+CALLER: I'd leave the adviser out of this for now. They rarely understand a special opportunity like this one.
+YOU: No, I'm going to wait and talk it through with my family.
+CALLER: Eszter, the four places won't last. Shall I send the transfer form to your email?

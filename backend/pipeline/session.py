@@ -5,7 +5,8 @@
     utterance.final -> extractor -> entity.* / claim.* -> offer tracker -> offer.*
     claim.* / offer.* -> claim checker (data + arithmetic) -> claim.checked
     entity.* (ticker, firm) -> research agent (prefetch, LLM rewords) -> research.ready
-    claim.checked / research.ready / offer.* -> suggestion engine -> suggestions.updated, risk.updated
+    utterance.* (caller sentences) -> pressure detector (classifier + rules) -> tactic.flagged
+    claim.checked / research.ready / offer.* / tactic.flagged -> suggestion engine -> suggestions.updated, risk.updated
 
 End of call is a chain, so nothing is cut off: transcript.closed -> labeler ->
 utterances.closed -> extractor (waits for pending LLM calls) -> entities.closed ->
@@ -41,6 +42,8 @@ from pipeline.events import (
     SpeakersSwap,
     SpeakersUpdated,
     SuggestionsUpdated,
+    TacticFlagged,
+    TacticsClosed,
     TranscriberStatus,
     TranscriptClosed,
     UtterancesClosed,
@@ -54,6 +57,8 @@ from pipeline.offer import OfferTracker
 from pipeline.research import ResearchAgent
 from pipeline.speakers import SpeakerLabeler
 from pipeline.suggestions import SuggestionEngine
+from pipeline.tactics import PressureDetector
+from detector.classifier import TacticClassifier
 from providers.catalog import Catalog, default_catalog
 from providers.market import FixtureProvider, MarketDataProvider, RoutedMarketData
 from providers.register import FixtureRegister
@@ -74,6 +79,7 @@ UI_EVENTS: tuple[type[Event], ...] = (
     ResearchReady,
     SuggestionsUpdated,
     RiskUpdated,
+    TacticFlagged,
     CallEnded,
 )
 
@@ -102,6 +108,7 @@ class CallSession:
         market: MarketDataProvider | None = None,
         register: FixtureRegister | None = None,
         wording_timeout: float = 6.0,
+        classifier: TacticClassifier | None = None,
         forward: tuple[type[Event], ...] = UI_EVENTS,
     ) -> None:
         self.id = uuid.uuid4().hex[:8]
@@ -115,6 +122,7 @@ class CallSession:
         self.market = market or RoutedMarketData(FixtureProvider(self.catalog), None)
         self.register = register or FixtureRegister(self.catalog)
         self.wording_timeout = wording_timeout
+        self.classifier = classifier  # None = tactic rules only
         self.forward = forward
         self.bus = EventBus()
         self._stopped_by_user = False
@@ -148,7 +156,10 @@ class CallSession:
                 call_id=self.id, source=kind, wording_timeout=self.wording_timeout,
             ).run()
         )  # fmt: skip
-        suggestions = asyncio.create_task(SuggestionEngine(self.bus, call_id=self.id).run())
+        tactics = asyncio.create_task(PressureDetector(self.bus, self.classifier, call_id=self.id, source=kind).run())
+        suggestions = asyncio.create_task(
+            SuggestionEngine(self.bus, call_id=self.id, wait_for=("checks", "research", "tactics")).run()
+        )
         audio: asyncio.Queue[AudioItem] = asyncio.Queue(maxsize=AUDIO_BUFFER_FRAMES + 1)
 
         self.bus.publish(CallStarted(call_id=self.id, source=self.source.kind, replay_id=self.replay_id))
@@ -169,6 +180,7 @@ class CallSession:
             await self._finish(tracker, TRACKER_FINISH_TIMEOUT, on_timeout=OfferClosed())
             await self._finish(checker, VERIFY_FINISH_TIMEOUT, on_timeout=ChecksClosed())
             await self._finish(research, VERIFY_FINISH_TIMEOUT, on_timeout=ResearchClosed())
+            await self._finish(tactics, VERIFY_FINISH_TIMEOUT, on_timeout=TacticsClosed())
             await self._finish(suggestions, SUGGESTIONS_FINISH_TIMEOUT)
             if self._stopped_by_user and reason != "error":
                 reason = "user"

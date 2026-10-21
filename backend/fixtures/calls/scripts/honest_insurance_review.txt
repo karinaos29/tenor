@@ -1,0 +1,20 @@
+# Honest call. Fictional insurer (Tarrow Mutual Insurance) reviewing an existing home policy. All names are invented.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, is this Eszter Varga? This is Joanne Pike from Tarrow Mutual Insurance. I'm calling about your annual review for your home policy.
+YOU: Oh yes, the letter said something about that. What do I need to do?
+CALLER: Nothing urgent. I just want to check that the cover still matches your home and contents.
+YOU: That sounds sensible. Has anything changed on the policy?
+CALLER: Your renewal date is in June, and the premium is shown on the letter. It went up slightly because of general rebuilding costs.
+YOU: Why did it go up?
+CALLER: Building materials cost more across the country, so insurers adjust their premiums. That's noted in the renewal summary.
+YOU: Do I have the right amount of cover for the house?
+CALLER: We'd suggest a rebuild estimate, which you can use to compare with the current sum insured. I can post a form for you to fill in.
+YOU: Is there a discount if I have a home alarm?
+CALLER: Yes, a monitored alarm can reduce the premium. You'd need to tell us the make and model, and we can check the discount.
+YOU: I have an old alarm system, I'll look for the details.
+CALLER: That's fine. Keep the box or the manual if you can. No need to change anything today.
+YOU: Thank you. What about the excess? Is it still the same?
+CALLER: The excess is shown on page two of the renewal summary. It's still two hundred and fifty dollars for accidental damage.
+YOU: Good. I'll read the summary and think about it.
+CALLER: Please do. If you'd like to make any changes, call us before the renewal date in June.

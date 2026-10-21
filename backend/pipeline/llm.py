@@ -79,7 +79,10 @@ class LlmClient:
             )
             result = parse(response.text or "")
         except (TimeoutError, ValidationError, Exception) as e:  # noqa: BLE001 - any failure -> rules-only
-            record(stage, (time.perf_counter() - started) * 1000, call_id=call_id, model=self.model, ok=False, error=type(e).__name__)
+            record(
+                stage, (time.perf_counter() - started) * 1000, call_id=call_id, model=self.model,
+                ok=False, error=type(e).__name__, detail=str(e)[:120],
+            )  # fmt: skip
             log.warning("%s on %s failed (%s); continuing without it", stage, self.model, type(e).__name__)
             return None
         usage = response.usage_metadata

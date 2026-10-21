@@ -2,6 +2,69 @@
   "source": "Tenor test register (fictional firms only)",
   "note": "Stands in for a real regulator register (e.g. a national financial-services register). Only fictional firms appear here; real firms are 'couldn't verify' in this prototype.",
   "firms": [
-    {"name": "Riverside Savings Bank", "status": "registered", "register_id": "TEST-BANK-0147", "since": "1998", "permissions": ["deposits", "investment advice"]}
+    {
+      "name": "Riverside Savings Bank",
+      "status": "registered",
+      "register_id": "TEST-BANK-0147",
+      "since": "1998",
+      "permissions": [
+        "deposits",
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Halden Ridge Savings Bank",
+      "status": "registered",
+      "register_id": "TEST-1203",
+      "since": "1993",
+      "permissions": [
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Cedar Hollow Savings Bank",
+      "status": "registered",
+      "register_id": "TEST-1204",
+      "since": "1994",
+      "permissions": [
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Corvin Lane Financial Advisers",
+      "status": "registered",
+      "register_id": "TEST-1205",
+      "since": "1995",
+      "permissions": [
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Tarrow Mutual Insurance",
+      "status": "registered",
+      "register_id": "TEST-1206",
+      "since": "1996",
+      "permissions": [
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Alderbrook Pension Services",
+      "status": "registered",
+      "register_id": "TEST-1207",
+      "since": "1997",
+      "permissions": [
+        "investment advice"
+      ]
+    },
+    {
+      "name": "Westmere Federal Savings",
+      "status": "registered",
+      "register_id": "TEST-1208",
+      "since": "1998",
+      "permissions": [
+        "investment advice"
+      ]
+    }
   ]
 }

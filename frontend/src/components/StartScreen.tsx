@@ -106,6 +106,11 @@ export function StartScreen() {
           <MicCheck />
           <ServiceList />
         </motion.section>
+        <p className="start__reviewers">
+          <button className="linkbtn" onClick={() => useAppStore.getState().setScreen("eval")}>
+            For reviewers: how Tenor is measured
+          </button>
+        </p>
       </div>
     </main>
   );

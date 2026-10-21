@@ -63,6 +63,23 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 
 **What M3 showed:** measuring the demo metric end to end changed the design, twice. Per stage everything was fast (checks < 1 ms, providers 0.3 s), but "spoken → flagged" for the key claim was 3.8 s. The first cause was extraction waiting for the whole turn to end, fixed with sentence-level extraction. The second was Deepgram holding the sentence until the reply ended, fixed by sending `Finalize` after a pause. It's now 0.79 s. A shortcut nearly misled me: a 40-second trimmed test file measured 0.94 s only because the file's end forced the flush. Only the full call told the truth.
 
+### Who did what in M4 (Used)
+
+| Task | Model | Effort | Result |
+|---|---|---|---|
+| Tactic taxonomy, rules, detector, risk weights, evaluation runner, sample review of both datasets | **Opus 5.5** (main session) | session default | One taxonomy file feeds the classifier, rules, UI labels and data briefs. |
+| Training lines (240) | **Sonnet 5.5** subagent | medium | 64.9k tokens, ~2 min. |
+| Held-out test lines (80) + 9 test calls with per-line labels | **Haiku 5.5** subagent, **separate brief, no access to the training set** | medium | 106.4k tokens, ~3.5 min. A different author than the training data, so style can't be memorized. |
+| Extra training lines (130) for the failure kinds seen in run 1 | **Sonnet 5.5** subagent | medium | 53.2k tokens, 40 s. Described by kind, with no test lines shown to it. |
+| Evaluation screen + pressure-tactics card | **Sonnet 5.5** subagent | medium | 77.6k tokens, ~1.3 min, 68 frontend tests. |
+| Backend tests for M4 | **Sonnet 5.5** subagent | medium | 94.1k tokens, ~2 min, 81 tests. Found a real bug (a later 10-point deadline rule overwrote a 15-point urgency reason), fixed: a reason never loses points. |
+| Zero-shot baseline | **Gemini** hedged flash-lite | thinking `minimal` | The comparison the architecture asked for (see below). |
+
+**What M4 showed:**
+1. **The two-author split paid off at once.** Thresholds tuned on Sonnet's lines gave precision 0.60 on Haiku's lines, and 5 of 7 honest calls were rated high. With one author, that would have stayed hidden.
+2. **Gemini zero-shot beat my classifier on accuracy:** F1 0.92 vs 0.84 on the held-out lines. I kept the classifier on the live path anyway, for latency (~9 ms vs ~660 ms), the quota (Gemini hit 429s even one line at a time), offline use and cost, and I report the trade-off as it is. Using the LLM as an async second opinion is the natural next step.
+3. **Your read-aloud dialogue found four bugs the synthetic tests hadn't:** a claim checked against the wrong company ("Apple … is up 80%, and Bluewater is the next Apple"), a comparison mention becoming the offer, an LLM-found "name" overwriting the caller's name, and the caller's intro lost because the caller spoke first. Each is fixed and pinned by a test built from Deepgram's actual transcript.
+
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
 - **Background, not blocking.** Research and scaffolding ran while the main session kept working.
@@ -92,8 +109,8 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 | Claim verdicts, suggestions, risk score | **no model**: arithmetic + scored rules | — | Verdicts must be explainable and repeatable; the LLM never decides | **Built** (M3) |
 | Who is "You" vs. "Caller" | **no model**: loudness per diarized speaker + first-turn rule; a speaker that holds two voices is split by loudness | — | Deterministic, < 1 ms, explainable; a manual swap overrides it | **Built** (M1, merged-voice split after M2) |
 | Voices for the scripted test calls (dev time) | `gemini-3.8-flash-tts`, macOS `say` as fallback | one request per turn, 3 voices, cached per line, 75 s cap + retries | Natural voices for a realistic demo and transcription test. **On 2026-10-20 the service stalled after 12 of 42 lines**, so the committed WAVs use the macOS fallback; one command re-voices them when TTS responds | Partly used (M2) |
-| Pressure-tactic detection | sentence-transformers embeddings + logistic regression (local) | — | No API cost, millisecond latency, works offline, measurable | Planned (M4) |
-| Tactic baseline for the eval | `gemini-3.5-flash-lite` zero-shot | — | The honest comparison: is a trained small classifier better than prompting? | Planned (M4) |
+| Pressure-tactic detection | `all-MiniLM-L6-v2` embeddings + logistic regression (local) + rules | thresholds tuned for precision on training data | ~9 ms per line, offline, no quota; precision 0.84 / recall 0.85 on held-out lines | **Built** (M4) |
+| Tactic baseline for the eval | Gemini zero-shot, hedged flash-lite | structured output, one line at a time, cached | The honest comparison. Answer: prompting is *more accurate* here (F1 0.92), but ~70× slower and quota-bound | **Used** (M4) |
 | Decision memo after hang-up | `gemini-3.8-flash` | thinking `medium` | One call per session. Quality matters more than speed, but it only explains facts already checked | Planned (M5) |
 
 Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TENOR_MODEL_FAST`, `TENOR_MODEL_RESEARCH`, `TENOR_MODEL_MEMO`, `TENOR_LLM_TIMEOUT_S`). **Built** in M0.

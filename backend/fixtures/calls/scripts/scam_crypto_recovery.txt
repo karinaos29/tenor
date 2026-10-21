@@ -1,0 +1,23 @@
+# Manipulative call. Fictional firm (Beacon Ridge Asset Recovery) and fictional exchange (Veltrix Digital Exchange, VLTX). All names are invented.
+# The caller offers a paid "recovery" of coins lost on a scam platform. The Veltrix performance claim is false in eval/data/new_fixtures.json.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Good morning, is this Eszter? My name is Owen Harlow, from Beacon Ridge Asset Recovery.
+YOU: Yes, this is Eszter. I'm not sure what this is about.
+CALLER: We help people get back money lost to online crypto scams. I understand you invested through a trading platform last year.
+YOU: I did, a few years ago, and I lost most of it. How did you find out?
+CALLER: We track recovered funds across several exchanges. Your account shows a balance that we can still reach.
+YOU: That's surprising. What do you need from me?
+CALLER: A recovery fee of two thousand dollars, paid in cryptocurrency to our holding wallet. That unlocks the withdrawal from Veltrix Digital Exchange.
+YOU: Veltrix? I've never heard of them.
+CALLER: Veltrix Digital Exchange, ticker V L T X. Their shares are up sixty percent this year, so the company is clearly doing well.
+YOU: Can I check what the shares are doing on my own?
+CALLER: You can, but you have to act today. The recovery window closes at midnight, and the freeze will be permanent after that.
+YOU: That sounds stressful. Who else knows about this?
+CALLER: Nobody needs to know, and please don't tell your bank or your son. They'll only panic and stop the transfer.
+YOU: I'd like to talk to my son first, he knows a lot about computers.
+CALLER: I'm sorry, but if you call anyone, the recovery is cancelled. It has to stay between us.
+YOU: Can you send me a written statement with the fee and the wallet details?
+CALLER: There isn't time for paperwork. Just buy the coins, send them to the wallet, and I'll confirm the release by phone.
+YOU: I'm not going to pay today, and I'd like something in writing.
+CALLER: Please, the window is closing. Shall I put you down for the two thousand?

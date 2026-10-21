@@ -1,0 +1,155 @@
+{
+  "firms": [
+    {
+      "name": "Beacon Ridge Asset Recovery",
+      "aliases": [
+        "Beacon Ridge",
+        "Beacon Ridge Recovery"
+      ],
+      "fictional": true,
+      "registered": false
+    },
+    {
+      "name": "Sterling Oak Wealth Partners",
+      "aliases": [
+        "Sterling Oak",
+        "Sterling Oak Wealth"
+      ],
+      "fictional": true,
+      "registered": false
+    },
+    {
+      "name": "Golden Meridian Bullion Trust",
+      "aliases": [
+        "Golden Meridian",
+        "Golden Meridian Bullion"
+      ],
+      "fictional": true,
+      "registered": false
+    },
+    {
+      "name": "Halden Ridge Savings Bank",
+      "aliases": [
+        "Halden Ridge"
+      ],
+      "fictional": true,
+      "registered": true
+    },
+    {
+      "name": "Cedar Hollow Savings Bank",
+      "aliases": [
+        "Cedar Hollow"
+      ],
+      "fictional": true,
+      "registered": true
+    },
+    {
+      "name": "Corvin Lane Financial Advisers",
+      "aliases": [
+        "Corvin Lane"
+      ],
+      "fictional": true,
+      "registered": true
+    },
+    {
+      "name": "Tarrow Mutual Insurance",
+      "aliases": [
+        "Tarrow Mutual"
+      ],
+      "fictional": true,
+      "registered": true
+    },
+    {
+      "name": "Alderbrook Pension Services",
+      "aliases": [
+        "Alderbrook"
+      ],
+      "fictional": true,
+      "registered": true
+    },
+    {
+      "name": "Westmere Federal Savings",
+      "aliases": [
+        "Westmere Federal"
+      ],
+      "fictional": true,
+      "registered": true
+    }
+  ],
+  "companies": [
+    {
+      "ticker": "VLTX",
+      "name": "Veltrix Digital Exchange",
+      "aliases": [
+        "Veltrix",
+        "Veltrix Digital"
+      ],
+      "market": {
+        "price": 3.42,
+        "day_change_pct": -1.8,
+        "returns_pct": {
+          "5d": -4.1,
+          "mtd": -2.3,
+          "13w": 5.6,
+          "ytd": 8.4,
+          "52w": 11.9
+        },
+        "profile": {
+          "exchange": "OTC (unlisted)",
+          "ipo": "2025-11-03",
+          "market_cap_musd": 41.5
+        },
+        "news": []
+      }
+    },
+    {
+      "ticker": "BMLI",
+      "name": "Brightmoor Lithium",
+      "aliases": [
+        "Brightmoor"
+      ],
+      "market": {
+        "price": 12.15,
+        "day_change_pct": 0.4,
+        "returns_pct": {
+          "5d": -2.2,
+          "mtd": 1.1,
+          "13w": -6.8,
+          "ytd": -3.1,
+          "52w": 4.0
+        },
+        "profile": {
+          "exchange": "OTC (unlisted)",
+          "ipo": "2024-06-17",
+          "market_cap_musd": 88.0
+        },
+        "news": []
+      }
+    },
+    {
+      "ticker": "ARDG",
+      "name": "Ardent Gold Mines",
+      "aliases": [
+        "Ardent Gold",
+        "Ardent"
+      ],
+      "market": {
+        "price": 6.05,
+        "day_change_pct": 0.3,
+        "returns_pct": {
+          "5d": 0.9,
+          "mtd": 4.0,
+          "13w": 9.7,
+          "ytd": 14.2,
+          "52w": 22.5
+        },
+        "profile": {
+          "exchange": "OTC (unlisted)",
+          "ipo": "2025-02-20",
+          "market_cap_musd": 27.3
+        },
+        "news": []
+      }
+    }
+  ]
+}

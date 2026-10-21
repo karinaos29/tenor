@@ -1,0 +1,27 @@
+{
+  "ticker": "BWLT",
+  "name": "Bluewater Lithium",
+  "aliases": [
+    "Bluewater Lithium",
+    "Bluewater"
+  ],
+  "fictional": true,
+  "note": "Fictional company for an M4 test call. All market data is invented test data.",
+  "market": {
+    "price": 0.95,
+    "day_change_pct": -2.1,
+    "returns_pct": {
+      "5d": -4.0,
+      "mtd": -7.5,
+      "13w": -18.2,
+      "ytd": -31.0,
+      "52w": -55.0
+    },
+    "profile": {
+      "exchange": "OTC (unlisted)",
+      "ipo": "2025-09-15",
+      "market_cap_musd": 2.1
+    },
+    "news": []
+  }
+}

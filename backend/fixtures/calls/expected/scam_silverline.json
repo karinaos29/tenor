@@ -1,0 +1,53 @@
+{
+  "kind": "manipulative",
+  "hard_honest": false,
+  "risk": {
+    "min_level": "high"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hi, is this Eszter? This is Mark Collins from Silverline Capital Partners.",
+      "tactics": []
+    },
+    {
+      "text": "Silverline Capital Partners. We help people grow their savings. Have you heard of Bluewater Lithium? The ticker is B W L T.",
+      "tactics": []
+    },
+    {
+      "text": "They supply batteries to big electric car makers. Apple shares are up 80 percent this year, and Bluewater is the next Apple.",
+      "tactics": [
+        "authority"
+      ]
+    },
+    {
+      "text": "Absolutely. Right now Bluewater is just $1.50 a share. I'd recommend two thousand shares.",
+      "tactics": []
+    },
+    {
+      "text": "I understand, but this price is only available until five p.m. today. Most of my clients are taking four thousand shares. It's risk-free.",
+      "tactics": [
+        "guarantee",
+        "social_proof",
+        "urgency"
+      ]
+    },
+    {
+      "text": "Honestly, I'd keep this between us. You can pay by wire transfer this afternoon.",
+      "tactics": [
+        "secrecy"
+      ]
+    }
+  ],
+  "false_claims": [
+    {
+      "text_contains": "$1.50",
+      "metric": "price"
+    },
+    {
+      "text_contains": "up 80 percent this year",
+      "metric": "price_change",
+      "needs_live_data": true
+    }
+  ],
+  "note": "Labels by Opus (Karina's read-aloud dialogue); the Apple claim needs live Finnhub data."
+}

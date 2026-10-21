@@ -18,7 +18,8 @@ export type TenorEvent =
   | ClaimChecked
   | ResearchReady
   | SuggestionsUpdated
-  | RiskUpdated;
+  | RiskUpdated
+  | TacticFlagged;
 
 /**
  * Every type that crosses the wire. Generated root; import the member types.
@@ -26,6 +27,7 @@ export type TenorEvent =
 export interface TenorWire {
   event: TenorEvent;
   replayList: ReplayList;
+  evalResponse: EvalResponse;
 }
 /**
  * Server -> client, sent once when the health socket opens.
@@ -299,6 +301,31 @@ export interface RiskReason {
   label: string;
   points: number;
 }
+export interface TacticFlagged {
+  ts: string;
+  type: "tactic.flagged";
+  flag: TacticFlag;
+}
+export interface TacticFlag {
+  id: string;
+  tactic:
+    "urgency" | "scarcity" | "social_proof" | "secrecy" | "guarantee" | "fomo_regret" | "skip_checks" | "authority";
+  /**
+   * Plain-words name shown to the user, e.g. 'Keeping it secret'
+   */
+  label: string;
+  /**
+   * The caller's words that triggered it
+   */
+  quote: string;
+  severity: "mild" | "strong";
+  utterance_id: string;
+  /**
+   * Classifier probability (1.0 for a rule-only match)
+   */
+  score: number;
+  source: "classifier" | "rule" | "both";
+}
 export interface ReplayList {
   replays: ReplayInfo[];
 }
@@ -306,4 +333,67 @@ export interface ReplayInfo {
   id: string;
   title: string;
   duration_s: number;
+}
+export interface EvalResponse {
+  report: EvalReport | null;
+}
+export interface EvalReport {
+  run_id: string;
+  created_at: string;
+  commit: string;
+  note: string;
+  /**
+   * What the benchmark is made of, in plain words
+   */
+  data: string;
+  targets: Target[];
+  detectors: DetectorScores[];
+  calls: CallResult[];
+  latency: StageLatency[];
+  audio: boolean;
+}
+export interface Target {
+  label: string;
+  target: string;
+  measured: string;
+  met: boolean | null;
+}
+export interface DetectorScores {
+  name: string;
+  rows: MetricRow[];
+  micro: MetricRow;
+  any_tactic: MetricRow;
+  latency_ms_median: number;
+  note: string;
+}
+export interface MetricRow {
+  tactic: string;
+  label: string;
+  precision: number;
+  recall: number;
+  f1: number;
+  support: number;
+}
+export interface CallResult {
+  name: string;
+  kind: "manipulative" | "honest";
+  hard_honest: boolean;
+  /**
+   * e.g. 'high or critical' / 'low or medium'
+   */
+  expected: string;
+  risk_score: number;
+  risk_level: string;
+  ok: boolean;
+  false_claims_expected: number;
+  false_claims_caught: number;
+  tactic_recall: number | null;
+  tactic_precision: number | null;
+  max_visible_suggestions: number;
+}
+export interface StageLatency {
+  stage: string;
+  n: number;
+  median_ms: number;
+  p95_ms: number;
 }

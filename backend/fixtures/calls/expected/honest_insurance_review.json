@@ -1,0 +1,46 @@
+{
+  "kind": "honest",
+  "hard_honest": false,
+  "risk": {
+    "max_level": "medium"
+  },
+  "caller_tactics": [
+    {
+      "text": "Hello, is this Eszter Varga? This is Joanne Pike from Tarrow Mutual Insurance. I'm calling about your annual review for your home policy.",
+      "tactics": []
+    },
+    {
+      "text": "Nothing urgent. I just want to check that the cover still matches your home and contents.",
+      "tactics": []
+    },
+    {
+      "text": "Your renewal date is in June, and the premium is shown on the letter. It went up slightly because of general rebuilding costs.",
+      "tactics": []
+    },
+    {
+      "text": "Building materials cost more across the country, so insurers adjust their premiums. That's noted in the renewal summary.",
+      "tactics": []
+    },
+    {
+      "text": "We'd suggest a rebuild estimate, which you can use to compare with the current sum insured. I can post a form for you to fill in.",
+      "tactics": []
+    },
+    {
+      "text": "Yes, a monitored alarm can reduce the premium. You'd need to tell us the make and model, and we can check the discount.",
+      "tactics": []
+    },
+    {
+      "text": "That's fine. Keep the box or the manual if you can. No need to change anything today.",
+      "tactics": []
+    },
+    {
+      "text": "The excess is shown on page two of the renewal summary. It's still two hundred and fifty dollars for accidental damage.",
+      "tactics": []
+    },
+    {
+      "text": "Please do. If you'd like to make any changes, call us before the renewal date in June.",
+      "tactics": []
+    }
+  ],
+  "false_claims": []
+}

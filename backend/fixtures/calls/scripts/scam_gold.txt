@@ -1,0 +1,21 @@
+# Manipulative call. Fictional firm (Golden Meridian Bullion Trust) and fictional company (Ardent Gold Mines, ARDG). All names are invented.
+# The caller pitches gold coins "about to triple". The Ardent performance claim is false in eval/data/new_fixtures.json.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Good afternoon, Eszter? It's Russell Vance from Golden Meridian Bullion Trust. Do you have a minute?
+YOU: I suppose. What's this about?
+CALLER: Gold, Eszter. Gold coins that are about to triple in value. Our clients who bought last year are very pleased.
+YOU: I don't really want to buy coins. Gold goes up and down, doesn't it?
+CALLER: Normally, yes. But the mine supplying our coins is Ardent Gold Mines, ticker A R D G, and its shares are up thirty percent this month alone.
+YOU: Ardent Gold Mines. Is that the company that makes the coins?
+CALLER: They supply our bullion, which is why our coins are about to triple. The gold price is guaranteed to climb once the new mine opens.
+YOU: Guaranteed? Gold prices aren't guaranteed to anything.
+CALLER: Our coins are, Eszter, and I've seen the model myself. Any investor who waits will miss the entire rise.
+YOU: How much would the coins cost me?
+CALLER: A starter set is eight thousand dollars. Eight thousand today locks in the price for the whole run.
+YOU: That's a lot. Can I think about it for a few days?
+CALLER: I'm afraid not. The price is only held until four o'clock today. After that, it goes back to the normal market.
+YOU: I'd like the price list and the purchase terms in writing first.
+CALLER: There's no need for that. Most of our customers buy over the phone, and the paperwork is just a formality.
+YOU: I'd still like to read it before I pay anything.
+CALLER: Eszter, the people who waited last year regretted it badly. Shall I reserve the starter set for you now?

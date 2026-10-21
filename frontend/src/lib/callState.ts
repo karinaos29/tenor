@@ -1,4 +1,4 @@
-import type { CallEnded, Claim, Offer, ResearchItem, RiskUpdated, Suggestion, TenorEvent, Utterance } from "./events.gen";
+import type { CallEnded, Claim, Offer, ResearchItem, RiskUpdated, Suggestion, TacticFlag, TenorEvent, Utterance } from "./events.gen";
 
 export type CallPhase = "connecting" | "live" | "ended" | "lost";
 export type Role = "caller" | "user";
@@ -21,6 +21,7 @@ export interface CallState {
   research: Record<string, ResearchItem>;
   suggestions: { visible: Suggestion[]; earlier: Suggestion[] };
   risk: RiskUpdated | null;
+  tactics: TacticFlag[];
 }
 
 export const LOST_MESSAGE = "Lost connection to Tenor's server. This call is no longer being transcribed.";
@@ -43,6 +44,7 @@ export const initialCallState: CallState = {
   research: {},
   suggestions: { visible: [], earlier: [] },
   risk: null,
+  tactics: [],
 };
 
 const CALL_EVENT_TYPES = new Set<string>([
@@ -58,6 +60,7 @@ const CALL_EVENT_TYPES = new Set<string>([
   "research.ready",
   "suggestions.updated",
   "risk.updated",
+  "tactic.flagged",
 ]);
 
 /** Parse a raw socket message. Returns null for anything that isn't a known server call event. */
@@ -117,6 +120,8 @@ export function applyCallEvent(state: CallState, event: TenorEvent, nowMs: numbe
       return { ...state, suggestions: { visible: event.visible, earlier: event.earlier } };
     case "risk.updated":
       return { ...state, risk: event };
+    case "tactic.flagged":
+      return state.tactics.some((t) => t.id === event.flag.id) ? state : { ...state, tactics: [...state.tactics, event.flag] };
     case "call.ended":
       return state.phase === "lost" ? state : { ...state, phase: "ended", endReason: event.reason, endedAtMs: nowMs };
     default:
