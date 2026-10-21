@@ -24,7 +24,7 @@ One Python module per job, each tested and timed on its own.
 |---|---|---|---|
 | Audio source | Mic frames from the browser, or a WAV at real-time pace | AudioWorklet (browser processing off); `FileSource` | `audio/sources.py` |
 | Transcriber | Interim and final words with diarized speakers | Deepgram Nova-3 over a raw WebSocket; KeepAlive, 3 reconnects, `Finalize` after a 0.45 s pause | `pipeline/transcriber.py` |
-| Speaker labeler | Diarized speakers → "You" / "Caller" | Loudness per speaker + first-turn rule; splits merged voices; manual swap | `pipeline/speakers.py` |
+| Speaker labeler | Diarized speakers → "You" / "Caller" | Bass vs. telephone band (a phone speaker has almost no bass), then loudness and a first-turn rule; splits merged voices; manual swap | `pipeline/speakers.py` |
 | Entity extractor | Offer terms, names, tickers, claims, per sentence | Rules + number normalizer first; Gemini only for fuzzy lines, quotes must match | `pipeline/extractor.py` |
 | Offer tracker | The current offer and how it changed | State machine, caller's words only; total by arithmetic | `pipeline/offer.py` |
 | Claim checker | Claim vs. data | Arithmetic on Finnhub or fixture data | `pipeline/checker.py` |
@@ -63,7 +63,7 @@ Every external call has a timeout and a visible fallback.
 | Deepgram drops or stalls | 3 reconnects with backoff; "Transcription paused" in the UI |
 | Gemini slow or down | Requests hedged across 2–3 models; a client-side budget; the rules or template result stays |
 | No market data | "Couldn't verify", with the source named |
-| Diarization mixes up speakers | Loudness labels, merged-voice split, "Swap speakers" button |
+| Diarization mixes up speakers | Bass and loudness labels, merged-voice split, "Swap speakers" button |
 | Misheard ticker or name | Matched against known tickers and company names |
 | Classifier can't load | Rules only; the Docker build fails instead, so it can't happen silently in production |
 

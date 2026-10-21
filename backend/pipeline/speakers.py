@@ -1,20 +1,24 @@
 """Speaker labeler: turns diarized "speaker 0/1" segments into caller/user utterances.
 
-Who is "You" (architecture doc: loudness heuristic + first-turn rule):
+Who is "You":
 1. First-turn rule: the first voice heard is provisionally the user (they answer the phone).
-2. Loudness: the user sits next to the laptop mic; the caller comes out of a phone
-   speaker. Once two speakers each have >= MIN_SPEECH_S of speech and differ by
-   >= SWITCH_DB, every diarized speaker is classified on its own against the midpoint
-   (with a margin, so labels don't flap). Diarization sometimes splits one voice into
-   two speaker numbers; both then still land on the right side.
-3. Merged voices: diarization can also put two similar voices on one speaker number.
-   When one speaker's turns form a loud and a quiet group >= SPLIT_DB apart, the group
-   without its first turn becomes a second voice, numbered VIRTUAL_BASE + n; the loud
-   group is the user. From then on each stretch of that speaker's words between pauses
-   goes to the nearer group, so a turn change Deepgram didn't mark still starts a new
-   line. Lines already sent keep their number: `speaker_index` is a voice number, and
-   the UI relabels by it as before.
-4. Manual swap: the user's "Swap speakers" button inverts the labels and locks them.
+2. Bass: the caller comes out of a phone speaker, which barely plays anything below
+   ~300 Hz; the user's voice reaches the laptop mic with its full low range. A voice's
+   "tone" is its bass (120-300 Hz) relative to its telephone band (300-3400 Hz). Once two
+   voices each have >= MIN_SPEECH_S of speech and their tones differ by >= TONE_DB, each
+   voice is classified against the midpoint: more bass = the user. This holds however
+   loud the phone is; a live test had the phone louder than the user.
+3. Loudness, when the tones don't separate: the user sits next to the mic, so once two
+   voices differ by >= SWITCH_DB, the louder side is the user. Diarization sometimes
+   splits one voice into two speaker numbers; both then still land on the right side.
+4. Merged voices: diarization can also put two voices on one speaker number. When one
+   speaker's stretches of speech (between pauses) form two groups >= TONE_DB apart in
+   tone, or its turns form two groups >= SPLIT_DB apart in loudness, the group without
+   its first stretch becomes a second voice, numbered VIRTUAL_BASE + n. From then on each
+   stretch of that speaker's words goes to the nearer group, so a turn change Deepgram
+   didn't mark still starts a new line. Lines already sent keep their number:
+   `speaker_index` is a voice number, and the UI relabels by it as before.
+5. Manual swap: the user's "Swap speakers" button inverts the labels and locks them.
    No new splits after that: the user has said who is who.
 
 Consumes: AudioLevel, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap.
@@ -23,6 +27,7 @@ Publishes: UtterancePartial, UtteranceProgress, UtteranceFinal, SpeakersUpdated,
 
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -49,6 +54,7 @@ SWITCH_DB = 3.0  # minimum loudness gap between the loudest and quietest speaker
 MARGIN_DB = 1.0  # hysteresis around the midpoint
 MIN_CLASSIFY_S = 0.5  # less speech than this: keep the speaker's current label
 SPLIT_DB = 6.0  # one speaker's loud and quiet turns this far apart are two people
+TONE_DB = 10.0  # voices this far apart in tone are a phone speaker and a person
 MIN_GROUP_S = 0.3  # a split needs about a word in the smaller group ("Hello?" is 0.4 s)
 VIRTUAL_BASE = 100  # voice number for the second person found inside diarized speaker n
 PAUSE_S = 0.3  # a silence where a turn may change (Deepgram's endpointing is 300 ms)
@@ -59,15 +65,32 @@ LEADING_WORD_GAP_S = 0.25  # a lone first word this close to the next speaker be
 class _Loudness:
     seconds: float = 0.0
     energy: float = 0.0  # sum of mean frame power x word duration
+    bass: float = 0.0  # the same, for the 120-300 Hz band
+    band: float = 0.0  # the same, for the 300-3400 Hz band
 
     def db(self) -> float:
         if self.seconds <= 0 or self.energy <= 0:
             return -100.0
         return 10 * math.log10(self.energy / self.seconds)
 
+    def tone(self) -> float:
+        """Bass relative to the telephone band, in dB. 0 for every voice without band data."""
+        if self.bass <= 0 or self.band <= 0:
+            return 0.0
+        return 10 * math.log10(self.bass / self.band)
+
     def add(self, other: "_Loudness") -> None:
         self.seconds += other.seconds
         self.energy += other.energy
+        self.bass += other.bass
+        self.band += other.band
+
+
+Feature = Literal["tone", "level"]
+FEATURES: dict[Feature, tuple[Callable[[_Loudness], float], float]] = {
+    "tone": (_Loudness.tone, TONE_DB),
+    "level": (_Loudness.db, SPLIT_DB),
+}
 
 
 def _pool(turns: list[_Loudness]) -> _Loudness:
@@ -77,17 +100,17 @@ def _pool(turns: list[_Loudness]) -> _Loudness:
     return total
 
 
-def _two_people(quiet: _Loudness, loud: _Loudness, others: list[float]) -> bool:
-    """Whether a quiet and a loud group of one speaker's turns are clearly two people.
-
-    `others` are the levels of the call's other voices with enough speech."""
-    if min(quiet.seconds, loud.seconds) < MIN_GROUP_S or max(quiet.seconds, loud.seconds) < MIN_SPEECH_S:
+def _two_people(low: _Loudness, high: _Loudness, others: list[float], feature: Feature = "level") -> bool:
+    """Whether a low and a high group of one speaker's speech (by tone or loudness) are
+    clearly two people. `others` are the call's other voices with enough speech."""
+    key, gap = FEATURES[feature]
+    if min(low.seconds, high.seconds) < MIN_GROUP_S or max(low.seconds, high.seconds) < MIN_SPEECH_S:
         return False
-    if loud.db() - quiet.db() < SPLIT_DB:
+    if key(high) - key(low) < gap:
         return False
-    levels = [quiet.db(), loud.db(), *others]
-    mid = (max(levels) + min(levels)) / 2
-    return loud.db() > mid + MARGIN_DB and quiet.db() < mid - MARGIN_DB
+    values = [key(low), key(high), *others]
+    mid = (max(values) + min(values)) / 2
+    return key(high) > mid + MARGIN_DB and key(low) < mid - MARGIN_DB
 
 
 def smooth_speakers(words: list[Word]) -> list[Word]:
@@ -122,9 +145,13 @@ class SpeakerLabeler:
         self._locked_known: set[int] = set()  # voices whose label the user set by hand
         self._decided = False
         self._power: list[float] = []  # linear power per 80 ms frame, indexed by frame number
+        self._bass: list[float] = []  # the same, 120-300 Hz
+        self._band: list[float] = []  # the same, 300-3400 Hz
         self._loudness: dict[int, _Loudness] = {}  # per voice: a diarized speaker or a split-off voice
         self._turns: dict[int, list[_Loudness]] = {}  # each final turn's loudness, per unsplit speaker
+        self._stretches: dict[int, list[_Loudness]] = {}  # each stretch between pauses, per unsplit speaker
         self._second_voice: dict[int, int] = {}  # diarized speaker -> the voice split off from it
+        self._split_by: dict[int, Feature] = {}  # diarized speaker -> what told its two voices apart
         self._seen: list[int] = []  # voices in order of first appearance
         self._words: list[Word] = []  # finalized words of the turn in progress
         self._interim: list[Word] = []
@@ -139,7 +166,9 @@ class SpeakerLabeler:
                 started = time.perf_counter()
                 self._on_segment(event)
                 if event.is_final:
-                    record("labeler", (time.perf_counter() - started) * 1000, call_id=self.call_id, source=self.source)
+                    # Each voice's level, tone and seconds so far: the evidence behind the labels.
+                    voices = {v: [round(st.db(), 1), round(st.tone(), 1), round(st.seconds, 1)] for v, st in self._loudness.items()}
+                    record("labeler", (time.perf_counter() - started) * 1000, call_id=self.call_id, source=self.source, voices=voices)
             elif isinstance(event, TranscriptUtteranceEnd):
                 self._finalize()
             elif isinstance(event, SpeakersSwap):
@@ -155,8 +184,13 @@ class SpeakerLabeler:
     def _add_level(self, event: AudioLevel) -> None:
         index = round(event.t / FRAME_SECONDS)
         if index >= len(self._power):
-            self._power.extend([0.0] * (index + 1 - len(self._power)))
+            grow = [0.0] * (index + 1 - len(self._power))
+            self._power.extend(grow)
+            self._bass.extend(grow)
+            self._band.extend(grow)
         self._power[index] = 10 ** (event.dbfs / 10)
+        self._bass[index] = 10 ** (event.bass_db / 10)
+        self._band[index] = 10 ** (event.voice_db / 10)
 
     def _on_segment(self, seg: TranscriptSegment) -> None:
         for w in seg.words:
@@ -242,15 +276,30 @@ class SpeakerLabeler:
             duration = max(w.end - w.start, FRAME_SECONDS)
             turn.seconds += duration
             turn.energy += (sum(frames) / len(frames)) * duration
+            turn.bass += (sum(self._bass[first : last + 1]) / len(frames)) * duration
+            turn.band += (sum(self._band[first : last + 1]) / len(frames)) * duration
         return turn
+
+    def _measure_stretches(self, words: list[Word]) -> list[_Loudness]:
+        """One measurement per stretch of words between pauses (a turn can hold both people)."""
+        out, start = [], 0
+        for i in range(1, len(words) + 1):
+            if i < len(words) and words[i].start - words[i - 1].end < PAUSE_S:
+                continue
+            stretch = self._measure(words[start:i])
+            start = i
+            if stretch.seconds > 0:
+                out.append(stretch)
+        return out
 
     def _route(self, speaker: int, turn: _Loudness) -> int:
         """The voice a turn by diarized `speaker` belongs to: after a split, the nearer group."""
         other = self._second_voice.get(speaker)
         if other is None or turn.seconds <= 0:
             return speaker
-        db = turn.db()
-        if abs(db - self._loudness[speaker].db()) <= abs(db - self._loudness[other].db()):
+        key = FEATURES[self._split_by[speaker]][0]
+        value = key(turn)
+        if abs(value - key(self._loudness[speaker])) <= abs(value - key(self._loudness[other])):
             return speaker
         return other
 
@@ -278,53 +327,67 @@ class SpeakerLabeler:
         if speaker in self._second_voice or speaker in self._second_voice.values():
             return voice  # already split; a voice splits at most once
         self._turns.setdefault(speaker, []).append(turn)
+        self._stretches.setdefault(speaker, []).extend(self._measure_stretches(words))
         if not self.locked and self._split(speaker):
             voice = self._route(speaker, turn)
         return voice
 
     def _split(self, speaker: int) -> bool:
-        """Split a diarized speaker in two if its turns form a loud and a quiet group.
+        """Split a diarized speaker in two if its speech forms two groups: by tone over its
+        stretches first (a phone and a person), else by loudness over its turns."""
+        for feature, observations in (("tone", self._stretches[speaker]), ("level", self._turns[speaker])):
+            cut = self._best_cut(speaker, observations, feature)
+            if cut is not None:
+                self._split_into(speaker, observations, *cut, feature)
+                return True
+        return False
 
-        A cut of the turns (sorted by loudness) counts if each group has >= MIN_GROUP_S and
-        one has >= MIN_SPEECH_S, the groups are >= SPLIT_DB apart, and they fall on opposite
-        sides of the call's midpoint: a split that wouldn't change a label isn't made (a
-        caller who sometimes speaks up stays one voice). Of those, take the most balanced
-        one (largest between-group variance, as in Otsu's method)."""
-        turns = self._turns[speaker]
-        ranked = sorted(turns, key=_Loudness.db)
+    def _best_cut(self, speaker: int, observations: list[_Loudness], feature: Feature) -> tuple[list[_Loudness], int] | None:
+        """A cut of the observations (sorted by the feature) counts if each group has >=
+        MIN_GROUP_S and one has >= MIN_SPEECH_S, the groups are far enough apart, and they
+        fall on opposite sides of the call's midpoint: a split that wouldn't change a label
+        isn't made (a caller who sometimes speaks up stays one voice). Of those, take the
+        most balanced one (largest between-group variance, as in Otsu's method)."""
+        key = FEATURES[feature][0]
+        ranked = sorted(observations, key=key)
         total = _pool(ranked)
-        others = [st.db() for v, st in self._loudness.items() if v != speaker and st.seconds >= MIN_SPEECH_S]
+        others = [key(st) for v, st in self._loudness.items() if v != speaker and st.seconds >= MIN_SPEECH_S]
         best: tuple[float, int] | None = None
-        quiet = _Loudness()
+        low = _Loudness()
         for k in range(1, len(ranked)):
-            quiet.add(ranked[k - 1])
-            loud = _Loudness(total.seconds - quiet.seconds, total.energy - quiet.energy)
-            if not _two_people(quiet, loud, others):
+            low.add(ranked[k - 1])
+            high = _Loudness(*(a - b for a, b in zip(
+                (total.seconds, total.energy, total.bass, total.band), (low.seconds, low.energy, low.bass, low.band)
+            )))  # fmt: skip
+            if not _two_people(low, high, others, feature):
                 continue
-            score = quiet.seconds * loud.seconds * (loud.db() - quiet.db()) ** 2
+            score = low.seconds * high.seconds * (key(high) - key(low)) ** 2
             if best is None or score > best[0]:
                 best = (score, k)
-        if best is None:
-            return False
-        k = best[1]
+        return None if best is None else (ranked, best[1])
 
-        # The speaker number keeps the group holding its first turn: lines already on
-        # screen mostly keep the right label. The other group becomes the new voice.
-        first_is_quiet = any(t is turns[0] for t in ranked[:k])
-        kept, moved = (ranked[:k], ranked[k:]) if first_is_quiet else (ranked[k:], ranked[:k])
+    def _split_into(self, speaker: int, observations: list[_Loudness], ranked: list[_Loudness], k: int, feature: Feature) -> None:
+        # The speaker number keeps the group holding its first observation: lines already
+        # on screen mostly keep the right label. The other group becomes the new voice.
+        first_is_low = any(t is observations[0] for t in ranked[:k])
+        kept, moved = (ranked[:k], ranked[k:]) if first_is_low else (ranked[k:], ranked[:k])
         other = VIRTUAL_BASE + speaker
         self._second_voice[speaker] = other
-        del self._turns[speaker]
+        self._split_by[speaker] = feature
+        del self._turns[speaker], self._stretches[speaker]
         self._loudness[speaker] = _pool(kept)
         self._loudness[other] = _pool(moved)
         self._seen.append(other)
-        loud_voice, quiet_voice = (other, speaker) if first_is_quiet else (speaker, other)
-        new_user = (self.user - {quiet_voice}) | {loud_voice}
+        # More bass, or louder: the person at the mic. _maybe_relabel may still correct a
+        # loudness split by tone.
+        high_voice, low_voice = (other, speaker) if first_is_low else (speaker, other)
+        new_user = (self.user - {low_voice}) | {high_voice}
         if new_user != self.user:
-            self._set_user(new_user, "loudness")
-        return True
+            self._set_user(new_user, "tone" if feature == "tone" else "loudness")
 
     def _maybe_relabel(self) -> None:
+        if not self.locked and self._relabel_by_tone():
+            return
         measured = {s: st.db() for s, st in self._loudness.items() if st.seconds >= MIN_SPEECH_S}
         if len(measured) < 2:
             return
@@ -358,13 +421,32 @@ class SpeakerLabeler:
         if new_user != self.user:
             self._set_user(new_user, "manual" if self.locked else "loudness")
 
+    def _relabel_by_tone(self) -> bool:
+        """Classify every voice by tone if the voices clearly differ in it. More bass = the
+        user, whatever the loudness. False if tone can't tell them apart."""
+        tones = {s: st.tone() for s, st in self._loudness.items() if st.seconds >= MIN_SPEECH_S}
+        if len(tones) < 2 or max(tones.values()) - min(tones.values()) < TONE_DB:
+            return False
+        mid = (max(tones.values()) + min(tones.values())) / 2
+        new_user = set(self.user)
+        for s, stats in self._loudness.items():
+            if stats.seconds < MIN_CLASSIFY_S:
+                continue
+            if stats.tone() > mid + MARGIN_DB:
+                new_user.add(s)
+            elif stats.tone() < mid - MARGIN_DB:
+                new_user.discard(s)
+        if new_user != self.user:
+            self._set_user(new_user, "tone")
+        return True
+
     def _swap(self) -> None:
         # Invert every label heard so far and lock: the user knows best.
         self.locked = True
         self._locked_known = set(self._seen)
         self._set_user(set(self._seen) - self.user, "manual")
 
-    def _set_user(self, user: set[int], reason: Literal["first_turn", "loudness", "manual"]) -> None:
+    def _set_user(self, user: set[int], reason: Literal["first_turn", "loudness", "tone", "manual"]) -> None:
         self.user = user
         self._decided = True
         self.bus.publish(SpeakersUpdated(user_indices=sorted(user), reason=reason, locked=self.locked))

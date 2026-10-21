@@ -27,23 +27,25 @@ class Harness:
         self.labeler = SpeakerLabeler(self.bus)
         self.t = 0.0
 
-    def levels(self, t0: float, t1: float, dbfs: float) -> None:
+    def levels(self, t0: float, t1: float, dbfs: float, tone: float | None = None) -> None:
+        """Frames at `dbfs`; with `tone`, also band powers (bass this many dB vs. the voice band)."""
+        bands = {} if tone is None else {"voice_db": dbfs, "bass_db": dbfs + tone}
         i = round(t0 / FRAME_SECONDS)
         while i * FRAME_SECONDS < t1 - 1e-9:
-            self.bus.publish(AudioLevel(t=i * FRAME_SECONDS, dbfs=dbfs))
+            self.bus.publish(AudioLevel(t=i * FRAME_SECONDS, dbfs=dbfs, **bands))
             i += 1
 
     def segment(self, words, is_final=True, speech_final=False) -> None:
         for e in parse_deepgram_message(results(words, is_final, speech_final), 0.0):
             self.bus.publish(e)
 
-    def speak(self, speaker: int, dbfs: float, seconds: float = 2.4, speech_final: bool = True) -> None:
+    def speak(self, speaker: int, dbfs: float, seconds: float = 2.4, speech_final: bool = True, tone: float | None = None) -> None:
         """One turn: `seconds` of speech at `dbfs` by `speaker`, then a short quiet pause."""
         n = round(seconds / 0.3)
         t0 = self.t
         words = [(f"w{i}", t0 + 0.3 * i, t0 + 0.3 * (i + 1), speaker) for i in range(n)]
-        self.levels(t0, t0 + 0.3 * n, dbfs)
-        self.levels(t0 + 0.3 * n, t0 + 0.3 * n + 0.4, -60.0)
+        self.levels(t0, t0 + 0.3 * n, dbfs, tone)
+        self.levels(t0 + 0.3 * n, t0 + 0.3 * n + 0.4, -60.0, None if tone is None else -10.0)
         self.segment(words, True, speech_final)
         self.t = t0 + 0.3 * n + 0.4
 
@@ -492,3 +494,61 @@ def test_flush_we_requested_does_not_end_the_turn():
         return [e.utterance.text async for e in out]
 
     assert asyncio.run(main()) == ["Most people haven't, yet."]
+
+
+# --- tone: a phone speaker has no bass ----------------------------------------------------
+# A voice in the room: bass about level with the telephone band. Through a phone: ~25 dB less.
+ROOM, PHONE = 2.0, -25.0
+
+
+def test_tone_beats_loudness_when_the_phone_is_louder():
+    """The live failure: the phone was louder at the mic than the user."""
+
+    def scenario(h):
+        h.speak(0, -16, tone=PHONE)  # the caller speaks first, and loudly
+        h.speak(1, -22, tone=ROOM)
+        h.speak(0, -16, tone=PHONE)
+        h.speak(1, -22, tone=ROOM)
+
+    events = run(scenario)
+    assert updates(events)[-1].user_indices == [1]
+    assert updates(events)[-1].reason == "tone"
+    assert [u.speaker for u in finals(events)][1:] == ["user", "caller", "user"]
+
+
+def test_tone_splits_one_diarized_speaker_inside_a_single_turn():
+    """Deepgram heard one speaker; each pause-delimited stretch is measured on its own."""
+
+    def scenario(h):
+        words, t = [], 0.0
+        for k, (tone, dbfs, n) in enumerate([(PHONE, -16, 8), (ROOM, -22, 3), (PHONE, -16, 8), (ROOM, -22, 3)]):
+            words += [(f"s{k}w{i}", t + 0.3 * i, t + 0.3 * (i + 1), 0) for i in range(n)]
+            h.levels(t, t + 0.3 * n, dbfs, tone)
+            h.levels(t + 0.3 * n, t + 0.3 * n + 0.5, -60.0, -10.0)
+            t += 0.3 * n + 0.5
+        h.segment(words, True, True)
+        h.t = t
+        h.speak(0, -22, seconds=1.5, tone=ROOM)  # a later turn: routed by tone to the user's voice
+        h.speak(0, -16, seconds=2.4, tone=PHONE)
+
+    events = run(scenario)
+    ups = updates(events)
+    assert ups[-1].reason == "tone" and ups[-1].user_indices == [100]
+    assert [(u.speaker, u.speaker_index) for u in finals(events)[-2:]] == [("user", 100), ("caller", 0)]
+
+
+def test_one_voice_with_varying_tone_is_not_split():
+    def scenario(h):
+        for tone in (-22.0, -30.0, -24.0, -31.0, -23.0):  # one phone voice, noisy bass
+            h.speak(0, -20, tone=tone)
+
+    events = run(scenario)
+    assert {u.speaker_index for u in finals(events)} == {0}
+
+
+def test_without_band_data_loudness_still_decides():
+    def scenario(h):
+        h.speak(0, -30)
+        h.speak(1, -20)
+
+    assert [(u.user_indices, u.reason) for u in updates(run(scenario))][-1] == ([1], "loudness")

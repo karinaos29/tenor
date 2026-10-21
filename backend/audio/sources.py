@@ -119,3 +119,23 @@ def frame_dbfs(frame: bytes) -> float:
         return -100.0
     rms = float(np.sqrt(np.mean(samples**2)))
     return max(-100.0, 20 * math.log10(max(rms, 1e-9) / 32768))
+
+
+# A phone's loudspeaker can't play much below ~300 Hz; a voice in the room reaches the
+# laptop mic with its full low range. The speaker labeler compares the two bands.
+BASS_HZ = (120.0, 300.0)  # from 120 Hz: above mains hum
+VOICE_HZ = (300.0, 3400.0)  # telephone band
+_WINDOW = np.hanning(FRAME_SAMPLES)
+_FREQS = np.fft.rfftfreq(FRAME_SAMPLES, 1 / SAMPLE_RATE)
+_BASS = (_FREQS >= BASS_HZ[0]) & (_FREQS < BASS_HZ[1])
+_VOICE = (_FREQS >= VOICE_HZ[0]) & (_FREQS < VOICE_HZ[1])
+
+
+def frame_bands(frame: bytes) -> tuple[float, float]:
+    """Power of one frame in the bass and the voice band, in dB (floor -100)."""
+    samples = np.frombuffer(frame, dtype="<i2").astype(np.float64) / 32768
+    if samples.size != FRAME_SAMPLES:
+        return -100.0, -100.0
+    power = np.abs(np.fft.rfft(samples * _WINDOW)) ** 2
+    bass, voice = float(power[_BASS].sum()), float(power[_VOICE].sum())
+    return max(-100.0, 10 * math.log10(max(bass, 1e-12))), max(-100.0, 10 * math.log10(max(voice, 1e-12)))

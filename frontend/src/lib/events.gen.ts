@@ -141,7 +141,7 @@ export interface SpeakersUpdated {
   ts: string;
   type: "speakers.updated";
   user_indices: number[];
-  reason: "first_turn" | "loudness" | "manual";
+  reason: "first_turn" | "loudness" | "tone" | "manual";
   /**
    * True after a manual swap: automatic relabeling stops
    */

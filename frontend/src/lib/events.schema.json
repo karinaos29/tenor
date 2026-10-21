@@ -855,6 +855,7 @@
           "enum": [
             "first_turn",
             "loudness",
+            "tone",
             "manual"
           ],
           "type": "string"

@@ -132,7 +132,7 @@ class SpeakersUpdated(Event):
 
     type: Literal["speakers.updated"] = "speakers.updated"
     user_indices: list[int]
-    reason: Literal["first_turn", "loudness", "manual"]
+    reason: Literal["first_turn", "loudness", "tone", "manual"]
     locked: bool = Field(description="True after a manual swap: automatic relabeling stops")
 
 
@@ -424,6 +424,8 @@ class AudioLevel(Event):
     type: Literal["audio.level"] = "audio.level"
     t: float
     dbfs: float
+    bass_db: float = Field(default=-100.0, description="Power at 120-300 Hz, which a phone speaker barely plays")
+    voice_db: float = Field(default=-100.0, description="Power at 300-3400 Hz, the telephone band")
 
 
 class Word(BaseModel):

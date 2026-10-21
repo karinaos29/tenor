@@ -24,7 +24,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 
-from audio.sources import FRAME_SECONDS, AudioSource, frame_dbfs
+from audio.sources import FRAME_SECONDS, AudioSource, frame_bands, frame_dbfs
 from pipeline.bus import EventBus, Subscription
 from pipeline.events import (
     AudioLevel,
@@ -207,7 +207,8 @@ class CallSession:
                 ctx.wall_start = time.monotonic()
             t = index * FRAME_SECONDS
             # Level first, so the labeler always has loudness for the words that follow.
-            self.bus.publish(AudioLevel(t=t, dbfs=frame_dbfs(frame)))
+            bass_db, voice_db = frame_bands(frame)
+            self.bus.publish(AudioLevel(t=t, dbfs=frame_dbfs(frame), bass_db=bass_db, voice_db=voice_db))
             if self.source.realtime:
                 self._put(audio, (t, frame))  # live audio can't wait: drop the oldest if behind
             else:

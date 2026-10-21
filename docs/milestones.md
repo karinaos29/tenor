@@ -21,5 +21,6 @@ Each milestone was checked on real audio, not only in tests. That's where most o
 - **m3:** Every stage took milliseconds, yet the key claim took 3.8 s from spoken to flagged. Two fixes brought it to 0.79 s: extracting per sentence, and asking Deepgram to finalize after a pause.
 - **m4:** Thresholds tuned on one AI author's lines gave precision 0.60 on the other author's. I made one disclosed round of fixes, using training data only. A read-aloud test call then found four bugs that synthetic calls hadn't, one of them a claim checked against the wrong company.
 - **m5:** The memo model's 400 error was my own thinking-level setting, not an outage. The word guard caught Gemini calling the test register "official".
+- **After m5:** A live speakerphone call had the phone louder than me, so every label flipped. Labels now go by each voice's bass first (a phone speaker has almost none), then by loudness.
 
 Why each fix took the shape it did is in [decisions.md](decisions.md); the final numbers are in the [README](../README.md#results).
