@@ -1,171 +1,40 @@
 # AI in Tenor
 
-Two separate questions: **which AI tools I used to build Tenor**, and **which AI models Tenor itself runs on**. Both are about spending tokens where they buy quality, and not spending them where they don't.
+Two questions: which AI I used to **build** Tenor, and which models Tenor **runs** on. The rule for both: put each task on the cheapest model that does it reliably.
 
-Status labels: **Used** = happened, with numbers where I have them. **Built** = in the code now. **Planned** = designed, lands in the milestone shown.
+## Building Tenor
+I built Tenor with **Claude Code**, routing each kind of work to a model and effort level:
 
----
-
-## 1. Building Tenor: Claude Code with model routing
-
-My coding agent is **Claude Code** (desktop app). I don't run every task on the strongest model. Each task goes to the cheapest model that can do it reliably, and the expensive model handles the decisions that are hard to undo.
-
-### Durable context instead of repeated prompts
-- `CLAUDE.md` holds the rules, stack and layout. Every session reads it automatically, so I never re-explain the project.
-- Two project skills load only when needed: `tenor-milestone` (plan, build, verify, document, commit) and `tenor-ui` (design tokens, copy rules, accessibility checklist).
-- One milestone per session keeps each conversation short. Context that should last goes into files (`docs/decisions.md`, `docs/milestones/`), not chat history.
-
-### Who did what in M0 (Used)
-
-| Task | Model | Effort | Why this model |
-|---|---|---|---|
-| Read the spec, plan the skeleton, design events and type generation, backend code, decisions log, review | **Opus 5.5** (main session) | session default | Judgment-heavy and cross-cutting: a bad event model or type pipeline spreads to every later milestone. |
-| Web research: current Gemini model IDs, prices, thinking controls | **Haiku 5.5** subagent, in background | low | Reading docs pages produces lots of text, and I needed a short table back. The raw pages stay out of the main context, and Haiku tokens cost a fraction of Opus tokens. Cost: 55.9k tokens, 8 tool calls, 33 s. |
-| Fact check of that research | Opus + `curl`/`grep` of the raw docs HTML | — | Haiku read the pages through a summarizer, and model IDs are load-bearing. A wrong ID breaks the app. A grep of the raw page text was cheaper than re-researching. Result: all of Haiku's model IDs were correct. |
-| Frontend scaffold from a written spec (Vite, tokens, socket client, store, tests) | **Sonnet 5.5** subagent, in background | medium | Many files, little ambiguity. With a tight brief (files, scripts, states, exact copy, done-criteria) Sonnet doesn't need Opus. It ran while I wrote the backend tests and docs, so the work happened in parallel. Cost: 63.3k tokens, 9 tool calls, ~2 min. All its commands passed on the first run. |
-| Review of Sonnet's output | Opus (main session) | session default | Cheap models write code that works, so the expensive model reviews for contract quality. It caught three things, fixed in ~10 min: (1) the generated TS types were noisy (`Ts1`, `Type2`, loose `[k: string]: unknown`), fixed at the source by dropping Pydantic field titles and setting `additionalProperties=false`; the stricter types then caught two unsafe casts, so parsing moved to the socket boundary; (2) the first ping waited 5 s, so the response time showed late; (3) services said "Checking…" while offline, changed to "Not checked". |
-| Visual check (light/dark, 1280/900 px, offline and recovery), final test run, commit | Opus (main session) | session default | Short, and needs judgment on the design rules. |
-
-### Who did what in M1 (Used)
-
-| Task | Model | Effort | Result |
-|---|---|---|---|
-| Deepgram streaming research (model, diarization params, KeepAlive, pricing) | **Haiku 5.5** subagent | low | 68.6k tokens, 12 tool calls, 45 s. This time it read **raw page text with `curl`**, not a summarizer (lesson from M0). I re-checked the one surprising string (`diarize_model=latest`) in its saved raw HTML. It was right. |
-| Architecture .docx → `docs/architecture.md` | **no model**: `pandoc` | — | Zero tokens. A converter does this better than any model. |
-| Plan, events, bus, transcriber, speaker labeler, session, gateway, test clip | **Opus 5.5** (main session) | session default | The correctness-critical core. Running the real replay early found 4 bugs that only real audio shows (a voice split into two speakers, a leading-word mislabel, interim label flips, the fast-replay data loss). |
-| Frontend: dark Hiya theme, Start/Live screens, AudioWorklet capture, call socket, 36 tests | **Sonnet 5.5** subagent, background | medium | 96.3k tokens, 16 tool calls, ~4 min, all checks passing on its first report. Ran in parallel with my backend work. |
-| Backend test suite (bus, sources, transcriber against a fake Deepgram server, labeler, gateway, opt-in live test) | **Sonnet 5.5** subagent, background | medium | 95.5k tokens, 12 tool calls, ~4.4 min, 79 tests. Told to **report bugs, not patch around them**: it found 2 real bugs in my (Opus) code, held as strict xfails until I fixed them. |
-| Review of Sonnet's frontend + transcript restyle you asked for | Opus | session default | Checked the worklet buffer handling and the socket lifecycle. Restyled the transcript with voice tokens (contrast computed, not eyeballed). |
-
-**What M1 showed about routing:** cross-model review works both ways. Opus caught Sonnet's contract-level issues in M0. In M1, Sonnet's independent tests caught Opus's edge cases. Each model checks work it didn't write.
-
-### Who did what in M2 (Used)
-
-| Task | Model | Effort | Result |
-|---|---|---|---|
-| Gemini SDK and TTS API check (thinking config, schema, multi-speaker) | **no subagent**: `uvx` + `grep` on raw docs | — | Two targeted checks were cheaper than a research agent this time. |
-| Scripts, ground truth, number normalizer, extraction rules, LLM contract, offer tracker, session chain, TTS generator | **Opus 5.5** (main session) | session default | The scripts came first, so rules were built against the ground truth. Rules alone reproduce both expected offers. |
-| Offer card, caller strip, transcript highlights, 13 tests | **Sonnet 5.5** subagent, background | medium | 67.1k tokens, 7 tool calls, ~1 min. Reviewed by Opus; no changes needed. |
-| Backend test suite (normalizer, rules incl. negative cases, extractor with a fake LLM, LLM wrapper, tracker, scripts vs. ground truth, session wiring) | **Sonnet 5.5** subagent, background | medium | 108.7k tokens, 17 tool calls, ~3 min, 206 tests, no source bugs found this time. |
-| Real-audio verification | Opus + Deepgram + Gemini | — | Found what tests on text couldn't: Deepgram merged two similar voices into one speaker, misheard "is this Eszter?" as a name, and wrote "a quarter percent" as "025%". Gemini rejected HTTP timeouts under 10 s and its TTS stalled. Each finding is now a fix, a regression test, or a documented follow-up. |
-
-**What M2 showed about routing:** the most valuable "model" step was running the real pipeline on real audio. Five of the M2 bugs only appeared there. Cheap models write good tests against the spec, but only reality tests the spec itself.
-
-### Who did what in M3 (Used)
-
-| Task | Model | Effort | Result |
-|---|---|---|---|
-| Probe Finnhub's free tier and re-measure Gemini before planning | **no subagent**: direct read-only API calls | — | Found the free 13-week return (≈ "this quarter") and the paid-only endpoints. Gemini's ranking had flipped overnight, so I chose **hedged calls** rather than one "best" model. |
-| Providers, claim checker, research agent + number guard, suggestion/risk rules, session chain, early sentence extraction | **Opus 5.5** (main session) | session default | Contracts and verdict arithmetic stayed with the expensive model. |
-| Suggestions, claims and risk UI, transcript chips, 11 tests | **Sonnet 5.5** subagent, background | medium | 73.3k tokens, 11 tool calls, ~1 min, all checks passing. |
-| Backend test suite for M3 | **Sonnet 5.5** subagent, background | medium | 122.0k tokens, 22 tool calls, ~4 min, 158 new tests. Found a real end-of-call race (a price check could be lost), fixed with an `offer.closed` marker. |
-| Plain-words rewording of research results | **Gemini**, hedged `3.5-flash-lite` + `3.1-flash-lite` | thinking `minimal` | 0.8–1.0 s on real calls. The number guard caught spelled-out numbers ("thirty-eight cents") and a dropped key figure on the first try; both are now rejected. |
-
-**What M3 showed:** measuring the demo metric end to end changed the design, twice. Per stage everything was fast (checks < 1 ms, providers 0.3 s), but "spoken → flagged" for the key claim was 3.8 s. The first cause was extraction waiting for the whole turn to end, fixed with sentence-level extraction. The second was Deepgram holding the sentence until the reply ended, fixed by sending `Finalize` after a pause. It's now 0.79 s. A shortcut nearly misled me: a 40-second trimmed test file measured 0.94 s only because the file's end forced the flush. Only the full call told the truth.
-
-### Who did what in M4 (Used)
-
-| Task | Model | Effort | Result |
-|---|---|---|---|
-| Tactic taxonomy, rules, detector, risk weights, evaluation runner, sample review of both datasets | **Opus 5.5** (main session) | session default | One taxonomy file feeds the classifier, rules, UI labels and data briefs. |
-| Training lines (240) | **Sonnet 5.5** subagent | medium | 64.9k tokens, ~2 min. |
-| Held-out test lines (80) + 9 test calls with per-line labels | **Haiku 5.5** subagent, **separate brief, no access to the training set** | medium | 106.4k tokens, ~3.5 min. A different author than the training data, so style can't be memorized. |
-| Extra training lines (130) for the failure kinds seen in run 1 | **Sonnet 5.5** subagent | medium | 53.2k tokens, 40 s. Described by kind, with no test lines shown to it. |
-| Evaluation screen + pressure-tactics card | **Sonnet 5.5** subagent | medium | 77.6k tokens, ~1.3 min, 68 frontend tests. |
-| Backend tests for M4 | **Sonnet 5.5** subagent | medium | 94.1k tokens, ~2 min, 81 tests. Found a real bug (a later 10-point deadline rule overwrote a 15-point urgency reason), fixed: a reason never loses points. |
-| Zero-shot baseline | **Gemini** hedged flash-lite | thinking `minimal` | The comparison the architecture asked for (see below). |
-
-**What M4 showed:**
-1. **The two-author split paid off at once.** Thresholds tuned on Sonnet's lines gave precision 0.60 on Haiku's lines, and 5 of 7 honest calls were rated high. With one author, that would have stayed hidden.
-2. **Gemini zero-shot beat my classifier on accuracy:** F1 0.92 vs 0.84 on the held-out lines. I kept the classifier on the live path anyway, for latency (~9 ms vs ~660 ms), the quota (Gemini hit 429s even one line at a time), offline use and cost, and I report the trade-off as it is. Using the LLM as an async second opinion is the natural next step.
-3. **Your read-aloud dialogue found four bugs the synthetic tests hadn't:** a claim checked against the wrong company ("Apple … is up 80%, and Bluewater is the next Apple"), a comparison mention becoming the offer, an LLM-found "name" overwriting the caller's name, and the caller's intro lost because the caller spoke first. Each is fixed and pinned by a test built from Deepgram's actual transcript.
-
-### Who did what in M5 (Used)
-
-| Task | Model | Effort | Result |
-|---|---|---|---|
-| Check Resend's API and the memo model before planning | **no subagent**: raw docs + one probe call | — | Found Resend's test inbox, so email can be verified without reaching a person; `gemini-3.8-flash` still failing (503/504). |
-| Memo contract, builder, writer + guards, SQLite store, email, endpoints, eval targets, README | **Opus 5.5** (main session) | session default | The facts-first memo and its guards are the product's promise; they stayed with the expensive model. |
-| Memo screen + polish pass (risk-pill popover, headings, 900 px overflow) | **Sonnet 5.5** subagent | medium | 96.1k tokens, ~2.4 min, 77 frontend tests. |
-| Backend tests for M5 | **Sonnet 5.5** subagent | medium | 94.1k tokens, ~2 min, 51 tests (memo builder, writer guards, store, email with a mocked HTTP layer, API, session). No bugs found this time. |
-| First draft of the demo video script | **Haiku 5.5** subagent | low | 63.3k tokens, 27 s. A cheap first draft from the milestone write-ups; I fixed the button names and numbers. |
-| Memo summary wording | **Gemini**, hedged 3.8-flash + flash-lite | thinking `low` / `minimal` | ~0.8 s on real calls. The guards caught "official register" on the first run. |
-
-**What M5 showed:** my own configuration was a hidden failure mode. `gemini-3.8-flash`'s 400 on the first memo was the thinking level I sent, not an outage, so the client now picks the level per model. Reading the error message rather than the error type (added in M4) is what made that visible in seconds.
-
-### Habits that save tokens (Used)
-- **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
-- **Background, not blocking.** Research and scaffolding ran while the main session kept working.
-- **Verify the expensive-to-be-wrong facts, trust the rest.** Model IDs and prices were checked against raw docs. Routine things (package versions) are left to `npm install` / `uv add`.
-- **Targeted reads.** I extracted only the relevant passages of the docs pages (models, pricing, thinking, caching) instead of loading whole pages.
-- **Generated types.** TypeScript event types come from the Pydantic models (`npm run gen:types`), so no model writes them twice and they can't drift. A test enforces this. In M1 they caught every stale use of a renamed field (`user_index` → `user_indices`) at typecheck time.
-- **Tools before models.** `pandoc` for document conversion, `curl` + `grep` for exact strings, `say` for test audio. A model only where judgment is needed.
-- **Disjoint files for parallel agents.** The frontend agent touched only `frontend/`, the test agent only `backend/tests/`, and I touched the source. No merge conflicts, no re-reading each other's work.
-
-### Routing plan for the next milestones (Planned)
-- **M2 Understand:** Opus for the extraction contract (what counts as a claim; regex-first, Gemini only for fuzzy cases) and the offer state machine. Sonnet for the offer card UI and tests. The two scripted calls generated with tools, not a model.
-- **M3:** Opus for the claim-check arithmetic and suggestion ranking. Sonnet for provider adapters and fixtures once the interface is fixed.
-- **M4:** Haiku or Sonnet to summarize eval runs and draft labeled utterances for me to review. Opus for the metrics and the classifier-vs-LLM comparison.
-
----
-
-## 2. Running Tenor: which models, for which job
-
-**The LLM extracts and explains. It never decides a verdict.** Claim verdicts come from data and arithmetic. This rule drives the model choices: Tenor doesn't need a flagship reasoning model, it needs fast, cheap, structured extraction.
-
-| Job | Model | Settings | Why | Status |
-|---|---|---|---|---|
-| Speech-to-text, both sides, live | Deepgram **Nova-3** streaming (`/v1/listen`) | interim results, `diarize_model=latest`, endpointing 300 ms | Deepgram's recommendation for multi-speaker audio; measured 305 ms median to interim words. ~$0.0077/min + $0.0020/min diarization (list price) | **Built** (M1) |
-| Offer terms, names, tickers, clear claims (price moves, guarantees, fund fees) | **no model**: rules + number-word normalizer + catalogs | — | ~1 ms per utterance, works without a key; reproduces the full expected offer on both test calls | **Built** (M2) |
-| Fuzzy extraction: company events ("signed a deal"), names rules missed | `gemini-3.5-flash-lite` + `3.1-flash-lite`, **hedged** since M3 | thinking `minimal`, Pydantic `response_schema`, 8 s async budget, quotes must match what was said | Only on caller lines with event cues: 2 calls on the 3-minute scam call. Measured 1.3–5.4 s, ~260 tokens in / ~70 out. Chosen over 3.5-flash-lite, which took 8–30 s (see below) | **Built** (M2) |
-| Research: who is this firm, how has this stock really done, is there news | **no model** for facts (Finnhub, test register, fixtures); **Gemini, hedged** rewords the summary | 6 s budget, number guard (every number must come from the data) | Prefetched on first mention, ready in ~0.3 s from data alone; the rewording is optional polish. Replaces the planned `gemini-3.8-flash` tool-use agent, which returned 503/504 in 3 of 3 tries | **Built** (M3) |
-| Claim verdicts, suggestions, risk score | **no model**: arithmetic + scored rules | — | Verdicts must be explainable and repeatable; the LLM never decides | **Built** (M3) |
-| Who is "You" vs. "Caller" | **no model**: loudness per diarized speaker + first-turn rule; a speaker that holds two voices is split by loudness | — | Deterministic, < 1 ms, explainable; a manual swap overrides it | **Built** (M1, merged-voice split after M2) |
-| Voices for the scripted test calls (dev time) | `gemini-3.8-flash-tts`, macOS `say` as fallback | one request per turn, 3 voices, cached per line, 75 s cap + retries | Natural voices for a realistic demo and transcription test. **On 2026-10-20 the service stalled after 12 of 42 lines**, so the committed WAVs use the macOS fallback; one command re-voices them when TTS responds | Partly used (M2) |
-| Pressure-tactic detection | `all-MiniLM-L6-v2` embeddings + logistic regression (local) + rules | thresholds tuned for precision on training data | ~9 ms per line, offline, no quota; precision 0.84 / recall 0.85 on held-out lines | **Built** (M4) |
-| Tactic baseline for the eval | Gemini zero-shot, hedged flash-lite | structured output, one line at a time, cached | The honest comparison. Answer: prompting is *more accurate* here (F1 0.92), but ~70× slower and quota-bound | **Used** (M4) |
-| Decision memo after hang-up | **no model** for the content (built from facts); **Gemini, hedged** (3.8-flash + flash-lite) words the summary | number + word guards, template fallback, 20 s budget, written after hang-up | Ready about 1 s after hang-up on real calls; nothing in it is generated without a source | **Built** (M5) |
-
-Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TENOR_MODEL_FAST`, `TENOR_MODEL_RESEARCH`, `TENOR_MODEL_MEMO`, `TENOR_LLM_TIMEOUT_S`). **Built** in M0.
-
-### What M2 measured about Gemini (Used)
-Identical structured-output requests, 2026-10-20, from my laptop:
-
-| Model | Latency (n) | Notes |
+| Work | Model | Effort |
 |---|---|---|
-| `gemini-3.1-flash-lite` | 1.3, 3.1, 3.7, 5.4 s; one 23.8 s outlier (5) | ~260 input / ~70 output tokens, no thinking tokens |
-| `gemini-3.5-flash-lite` | 8–30 s, mostly server timeouts (6) | |
-| `gemini-3.8-flash` | timed out at 30 s (1) | Planned research model: re-check before M3 |
+| Architecture, event contracts, pipeline core, verdict logic, guards, reviews | Claude Opus 5.5 (main session) | default |
+| Frontend screens, from written specs | Claude Sonnet 5.5 (subagents) | medium |
+| Test suites, told to report bugs rather than patch around them | Claude Sonnet 5.5 (subagents) | medium |
+| Classifier training lines | Claude Sonnet 5.5 (subagent) | medium |
+| Held-out test lines and test calls, with no access to the training data | Claude Haiku 5.5 (subagent) | medium |
+| Docs research (model IDs, APIs), first drafts | Claude Haiku 5.5 (subagents) | low |
+| Format conversion, exact-string checks, test voices | no model: `pandoc`, `curl` + `grep`, `say` | — |
 
-Two lessons that changed the code:
-1. **A model on the hot path is a liability.** This is why the architecture says "rules first": the offer card never waits for an LLM, and the extraction LLM is an async extra with a fallback. The architecture's "50–500 ms" for the LLM step isn't achievable with these numbers. The rules step achieves ~1 ms.
-2. **Gemini's HTTP timeout is a server deadline with a 10 s minimum.** A 2.5 s `HttpOptions(timeout=…)` made every call fail with 400 INVALID_ARGUMENT. The real budget is now enforced client-side with `asyncio.wait_for`.
+In total that was 13 Sonnet runs (~1.1M tokens) and 4 Haiku runs (~0.3M tokens); everything else ran on Opus.
 
-### Why Gemini through Google AI Studio
-- **I already have a billed Google AI Studio key.** One key covers every LLM job, with no new vendor account. The SDK is `google-genai` and reads `GEMINI_API_KEY`.
-- **There's a tier for each job.** Flash-Lite for the hot path, Flash for tool use, both with structured output and function calling.
-- **Why not the flagship `gemini-4-argon`:** $2 / $10 per 1M tokens (doubling to $4 / $20 on 2026-12-01), paid tier only. It buys deep reasoning, but the LLM in Tenor isn't allowed to reason its way to a verdict. Kept as a one-line config switch for the memo if quality is lacking.
-- **Watch item:** `gemini-3.8-flash` doubles to $1.50 / $7.50 on 2027-01-01. Flash-Lite is the fallback for research if that matters.
-- **Originally planned:** Claude via the Anthropic SDK. Switched because of the existing key (see `docs/decisions.md`).
+What made this work:
+- **Durable context.** `CLAUDE.md` and two project skills hold the rules, so no session needed them re-explained.
+- **Cross-model review.** Opus reviewed Sonnet's code, and Sonnet's independent tests found real bugs in Opus's.
+- **Tools before models.** A converter, `grep` and `curl` cost no tokens and don't guess.
 
-Prices, IDs, thinking levels and caching limits were checked on ai.google.dev ([models](https://ai.google.dev/gemini-api/docs/models), [pricing](https://ai.google.dev/gemini-api/docs/pricing), [thinking](https://ai.google.dev/gemini-api/docs/thinking), [caching](https://ai.google.dev/gemini-api/docs/caching)) on 2026-10-20.
+## Running Tenor
+**The LLM extracts and explains; it never decides.** So Tenor doesn't need a flagship model. It needs fast, cheap, checkable output, and nothing on the hot path waits for an LLM.
 
-### Token and latency budget at runtime
-- **Rules before tokens (Built, M2).** Most utterances never reach an LLM. On the 3-minute scam call, 2 of 12 caller lines did (the "signed a deal" lines).
-- **Thinking off (Built, M2).** Thinking tokens are billed as output. Extraction uses `minimal`, and the measured calls used 0 thinking tokens.
-- **Send the delta, not the transcript (Built, M2).** Each extraction call gets one sentence plus the current instrument (~260 tokens), not the whole call. Cost stays flat as the call gets longer.
-- **Stable prefix first.** Instructions, schema and tool definitions go at the start of every prompt so implicit caching (on by default for Gemini 2.5+) can apply. Honest caveat: the minimum for 3.8 Flash is 4,096 tokens, so the research agent's prompt (tool definitions + call context) is the likely beneficiary. Flash-Lite isn't in Google's minimums table, and the short extraction prompts probably won't cache.
-- **Structured output, no retries.** Responses are validated against the same Pydantic models as the events. A malformed response gives a "couldn't verify" state, not a retry loop.
-- **Prefetch research.** The research agent starts when a firm or ticker is first named, before the caller makes a claim about it, so the answer is often ready when needed.
-- **Log tokens next to latency.** Each LLM stage records input, output and cached tokens from the response's usage data in the same latency log. The eval screen can then show real cost per call, not just this estimate.
+| Job | Model | Thinking |
+|---|---|---|
+| Speech-to-text, both sides | Deepgram Nova-3 streaming, with diarization | — |
+| Offer terms, claims, verdicts, risk, speaker labels | no model: rules and arithmetic | — |
+| Fuzzy extraction ("signed a deal") | `gemini-3.5-flash-lite` + `gemini-3.1-flash-lite`, hedged | minimal |
+| Plain-words research summaries | same, hedged, under a number guard | minimal |
+| Pressure tactics | `all-MiniLM-L6-v2` + logistic regression, local (~9 ms per line) | — |
+| Memo summary | `gemini-3.8-flash` + both flash-lite models, hedged, under number and word guards | low / minimal |
+| Test-call voices (development only) | `gemini-3.8-flash-tts`, macOS `say` as fallback | — |
 
-**Rough cost of one 15-minute call (estimate; the extraction row uses M2's measured tokens, the others are still assumptions).** Extraction: ~10 LLM calls × ~260 input / ~70 output tokens. Research: ~5 runs × 3 turns × ~3k / ~500. Memo: ~10k / ~1.5k:
+**Hedged** means each request goes to every listed model at once, and the first valid answer wins. Gemini's latency per model swung from under 1 s to 30 s within a day.
 
-| Stage | Input | Output | Cost |
-|---|---|---|---|
-| Extraction (3.1 Flash-Lite, rules do the rest) | 2.6k | 0.7k | ≈ $0.002 |
-| Research (3.8 Flash) | 45k | 7.5k | ≈ $0.06 |
-| Memo (3.8 Flash) | 10k | 1.5k | ≈ $0.01 |
-| **Total** | | | **≈ $0.07 per call** |
-
-At these prices, model choice matters more for **latency** (2-second flag target) than for cost. M2 showed that even the fastest tier can take seconds, so the hot path has no model on it at all.
+**Why Gemini via Google AI Studio:** I already had a billed key, so one key covers every LLM job. Model IDs live in `backend/app/config.py` and can be overridden from `.env`.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { apiUrl } from "../lib/backend";
 import type { CallResult, DetectorScores, EvalReport, EvalResponse, MetricRow } from "../lib/events.gen";
 import { useAppStore } from "../stores/app";
 import "./EvalScreen.css";
@@ -10,7 +11,7 @@ async function fetchEval(): Promise<EvalResponse> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const res = await fetch("/api/eval", { signal: ctrl.signal });
+    const res = await fetch(apiUrl("/api/eval"), { signal: ctrl.signal });
     if (!res.ok) throw new Error("bad status");
     return (await res.json()) as EvalResponse;
   } finally {

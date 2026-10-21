@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Build milestone $ARGUMENTS
 
-Milestones (from `docs/architecture.md`):
+Milestones (see `docs/milestones.md`):
 - **m1 Hear:** mic capture in the browser, audio WebSocket gateway, Deepgram streaming, caller/user labels, live transcript UI. Demo: transcript appears live.
 - **m2 Understand:** event bus, entity extraction, offer tracker with change detection, file replay source, the two scripted test calls. Demo: offer card fills live.
 - **m3 Verify:** fast-lane claim checks, provider adapters + fixtures, research agent with prefetch, suggestion engine (rank, cap 4, expire), risk score. Demo: false claim flagged within 2 s.
@@ -22,7 +22,7 @@ Milestones (from `docs/architecture.md`):
 5. **Verify** against the acceptance criteria. Run `uv run pytest`, `npm run test`, `npm run typecheck`. Replay `fixtures/calls/` through the pipeline where relevant and report measured latencies.
 6. **Document:**
    - Add decisions to `docs/decisions.md`.
-   - Write `docs/milestones/$ARGUMENTS.md`: what was built, what was measured, what's left, known issues, and a 3-line demo script for recording.
+   - Add a row for $ARGUMENTS to `docs/milestones.md` (what it added, the key measurement) and a line under "What real runs caught".
 7. **Commit** with message `$ARGUMENTS: <summary>` and tag `$ARGUMENTS`. Ask before pushing.
 8. **Stop.** Summarize in 5 lines and wait. Don't start the next milestone.
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { apiUrl } from "../lib/backend";
 import { newCall } from "../lib/callSession";
 import { formatClock } from "../lib/callState";
 import type { CallMemoResponse, EmailDefaults, EmailResult, Memo, MemoItem, Utterance } from "../lib/events.gen";
@@ -42,7 +43,7 @@ function useMemoLoad(callId: string | null): { load: Load; retry: () => void } {
     let ticks = 0;
     setLoad({ state: "writing" });
     const tick = async () => {
-      const body = await getJson<CallMemoResponse>(`/api/calls/${encodeURIComponent(callId)}/memo`);
+      const body = await getJson<CallMemoResponse>(apiUrl(`/api/calls/${encodeURIComponent(callId)}/memo`));
       if (cancelled) return;
       if (body?.status === "ready" && body.memo) return setLoad({ state: "ready", memo: body.memo });
       if (body?.status === "failed") return setLoad({ state: "failed" });
@@ -100,7 +101,7 @@ function EmailCard({ callId }: { callId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    void getJson<EmailDefaults>("/api/email").then((d) => {
+    void getJson<EmailDefaults>(apiUrl("/api/email")).then((d) => {
       if (cancelled) return;
       setConfigured(d?.configured === true);
       if (d?.to) setTo((cur) => cur || (d.to as string));
@@ -116,7 +117,7 @@ function EmailCard({ callId }: { callId: string }) {
     setSending(true);
     setResult(null);
     const body = await getJson<EmailResult>(
-      `/api/calls/${encodeURIComponent(callId)}/email`,
+      apiUrl(`/api/calls/${encodeURIComponent(callId)}/email`),
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: to.trim() }) },
       15000,
     );

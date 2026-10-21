@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MicCheck } from "./MicCheck";
 import { ServiceList } from "./ServiceList";
+import { apiUrl } from "../lib/backend";
 import { startCall } from "../lib/callSession";
 import { replayReason, startReason } from "../lib/startGate";
 import type { ReplayInfo, ReplayList, SavedCall, SavedCallList } from "../lib/events.gen";
@@ -14,7 +15,7 @@ async function fetchReplays(): Promise<ReplayInfo[]> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const res = await fetch("/api/replays", { signal: ctrl.signal });
+    const res = await fetch(apiUrl("/api/replays"), { signal: ctrl.signal });
     if (!res.ok) return [];
     const body = (await res.json()) as ReplayList;
     return Array.isArray(body.replays) ? body.replays : [];
@@ -29,7 +30,7 @@ async function fetchLastReadyCall(): Promise<SavedCall | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const res = await fetch("/api/calls", { signal: ctrl.signal });
+    const res = await fetch(apiUrl("/api/calls"), { signal: ctrl.signal });
     if (!res.ok) return null;
     const body = (await res.json()) as SavedCallList;
     const ready = (Array.isArray(body.calls) ? body.calls : []).filter((c) => c.status === "ready");

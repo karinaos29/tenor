@@ -11,6 +11,7 @@ import wave
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
 from app.config import VERSION, get_settings
@@ -41,7 +42,7 @@ from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
 from detector.classifier import TacticClassifier
 from memo.email import send_memo
-from memo.store import MemoStore
+from memo.store import DEFAULT_PATH, MemoStore
 from providers.catalog import default_catalog
 from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
@@ -58,6 +59,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Tenor", version=VERSION, lifespan=lifespan)
 app.state.classifier = None  # set at startup; None = tactic rules only
 
+# Hosted, the frontend (Vercel) and this API (Railway) are different origins. Locally, Vite
+# proxies /api and /ws, so nothing needs allowing.
+if get_settings().origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+
 # Swappable in tests (fake transcriber, temp replay folder).
 app.state.transcriber_factory = lambda: DeepgramTranscriber(get_settings().deepgram_api_key)
 app.state.llm_factory = lambda: fast_llm(
@@ -68,7 +79,8 @@ app.state.market_factory = lambda: RoutedMarketData(
     FinnhubProvider(get_settings().finnhub_api_key, timeout_s=get_settings().finnhub_timeout_s),
 )
 app.state.memo_llm_factory = lambda: fast_llm(get_settings().gemini_api_key, get_settings().tenor_model_memo, get_settings().tenor_memo_timeout_s)
-app.state.store = MemoStore()
+_data_dir = get_settings().tenor_data_dir
+app.state.store = MemoStore(Path(_data_dir) / "tenor.sqlite" if _data_dir else DEFAULT_PATH)
 app.state.background: set[asyncio.Task] = set()  # memo writers outlive their call socket
 app.state.replay_dir = Path(__file__).resolve().parents[1] / "fixtures" / "calls"
 
@@ -91,9 +103,21 @@ def health() -> HealthStatus:
     return HealthStatus(version=VERSION, services=service_status())
 
 
+def origin_allowed(ws: WebSocket) -> bool:
+    """CORS doesn't cover WebSockets, so the sockets check the browser's Origin themselves.
+    It stops other websites from using this backend (and its API keys) from a visitor's
+    browser; it can't stop a script that fakes the header."""
+    allowed = get_settings().origins
+    origin = ws.headers.get("origin")
+    return not allowed or origin is None or origin.rstrip("/") in allowed
+
+
 @app.websocket("/ws/health")
 async def health_socket(ws: WebSocket) -> None:
     """Sends HealthStatus on open, then answers each HealthPing with a HealthPong."""
+    if not origin_allowed(ws):
+        await ws.close(code=1008)
+        return
     await ws.accept()
     await ws.send_text(health().model_dump_json())
     try:
@@ -202,6 +226,9 @@ def make_source(start: CallStart) -> AudioSource:
 async def call_socket(ws: WebSocket) -> None:
     """One call per connection. First message: call.start. Mic audio arrives as binary
     frames; call.stop and speakers.swap as JSON. UI events stream back as JSON."""
+    if not origin_allowed(ws):
+        await ws.close(code=1008)
+        return
     await ws.accept()
     try:
         first = client_event_adapter.validate_json(await asyncio.wait_for(ws.receive_text(), CALL_START_TIMEOUT))

@@ -33,7 +33,7 @@ backend/
 frontend/src/
   components/  stores/  lib/  styles/
 eval/             test set, scripts, results
-docs/             architecture.md, decisions.md, milestones/
+docs/             architecture.md, decisions.md, milestones.md
 ```
 
 ## Rules
@@ -52,8 +52,9 @@ docs/             architecture.md, decisions.md, milestones/
 - Frontend: `npm run dev` (from `frontend/`)
 - Tests: `uv run pytest`, `npm run test`, `npm run typecheck`
 - Replay a call: `uv run python -m audio.replay fixtures/calls/scam_kstl.wav`
+- Deploy: frontend on Vercel (`frontend/vercel.json`), backend on Railway (`railway.json` → `backend/Dockerfile`)
 
 ## Working style
-- Work one milestone at a time (see `docs/architecture.md` > Milestones). Use the `tenor-milestone` skill.
+- Work one milestone at a time (see `docs/milestones.md`). Use the `tenor-milestone` skill.
 - For any UI work, use the `tenor-ui` skill.
 - Record each non-obvious decision in `docs/decisions.md` (date, decision, why, alternative).

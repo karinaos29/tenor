@@ -1,4 +1,5 @@
 import type { CallStart, CallStop, SpeakersSwap, TenorEvent } from "./events.gen";
+import { wsUrl } from "./backend";
 import { parseCallEvent } from "./callState";
 
 export const OPEN_TIMEOUT_MS = 4000;
@@ -23,7 +24,6 @@ export interface CallSocket {
 }
 
 export function openCallSocket(opts: CallSocketOptions): CallSocket {
-  const scheme = location.protocol === "https:" ? "wss" : "ws";
   let opened = false;
   let ended = false;
   let stopping = false;
@@ -31,7 +31,7 @@ export function openCallSocket(opts: CallSocketOptions): CallSocket {
   let openTimer: ReturnType<typeof setTimeout> | undefined;
   let stopTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const ws = new WebSocket(`${scheme}://${location.host}/ws/call`);
+  const ws = new WebSocket(wsUrl("/ws/call"));
   ws.binaryType = "arraybuffer";
 
   const detach = () => {

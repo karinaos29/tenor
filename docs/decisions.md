@@ -1,264 +1,54 @@
 # Decisions
 
-Non-obvious choices, newest last. Format: decision, why, alternative.
+The non-obvious choices, with the reason and the alternative I didn't take. Grouped by topic; the tag shows the milestone. M0–M2 were decided on 2026-10-20, M3–M5 and hosting on 2026-10-21.
 
----
+**Contents:** [Models](#models-and-providers) · [Audio and speakers](#audio-and-speakers) · [Understanding the call](#understanding-the-call) · [Verifying claims](#verifying-claims) · [Detecting pressure](#detecting-pressure) · [The memo](#the-memo) · [Engineering](#engineering) · [Hosting](#hosting)
 
-### 2026-10-20 · M0 · LLM provider: Google Gemini instead of Claude
-- **Decision:** Use Gemini through the `google-genai` SDK with a Google AI Studio key (billing enabled). `ANTHROPIC_API_KEY` in the kickoff prompt becomes `GEMINI_API_KEY`.
-- **Why:** I already have a billed AI Studio key, so there's no new account or spend approval. The Gemini line has a tier for each of Tenor's LLM jobs (Flash-Lite for the per-utterance hot path, Flash for tool use), plus structured JSON output and function calling, which is all the architecture needs. The LLM only extracts and explains (verdicts come from data), so the provider is swappable.
-- **Alternative:** Claude via the Anthropic SDK, as first planned. Kept possible: model IDs are config, not code.
+## Models and providers
+- **Gemini through Google AI Studio, not Claude** `M0`. I already had a billed key. Gemini has a tier for each job, plus structured output. The LLM only extracts and explains, so the provider is easy to swap. *Alternative:* Claude, as first planned; model IDs are config, not code.
+- **Fast tiers, no flagship model** `M0`. Flash-Lite handles extraction and wording, and 3.8 Flash only the memo summary. Not `gemini-4-argon`: it sells reasoning depth, and Tenor's LLM is never allowed to reason its way to a verdict. *Alternative:* Argon for the memo, one call per call.
+- **Hedged LLM calls** `M3`. Each request goes to 2–3 models at once, and the first valid answer wins. Per-model latency flipped within a day (3.5-flash-lite went from 8–30 s to 0.8 s, 3.1-flash-lite from 1.3 s to 3–19 s). Requests are ~300 tokens, so the extra cost is negligible. *Alternative:* one model with sequential fallback, which waits out the full timeout first.
+- **The LLM budget is enforced in the client** `M2`. Gemini rejects an HTTP timeout under 10 s, so the budget (6–20 s per job) is an `asyncio.wait_for`. The thinking level is chosen per model, because 3.8 Flash rejects `minimal` `M5`.
+- **Deepgram Nova-3 over a raw WebSocket** `M1`. It documents interim results and diarization, the two things the transcript needs. With the raw socket I control the KeepAlive, reconnects and timeouts. *Alternative:* the Deepgram SDK (that behavior is harder to see and test) or Gemini live transcription (no documented diarization).
 
-### 2026-10-20 · M0 · One Gemini model per job, no flagship model
-- **Decision:** `gemini-3.5-flash-lite` (thinking `minimal`) for extraction; `gemini-3.8-flash` (thinking `low`) for the research agent; `gemini-3.8-flash` for the memo. Not `gemini-4-argon`.
-- **Why:** Extraction runs on every utterance and sits on the "flag within 2 s" path, so it needs the cheapest, fastest tier ($0.30 / $2.50 per 1M in/out). Research needs reliable tool calls, so it gets Flash. Argon ($2 / $10, doubling on 2026-12-01, paid tier only) buys reasoning depth, but Tenor's LLM never decides a verdict, so depth adds little. Prices and IDs checked on ai.google.dev on 2026-10-20.
-- **Alternative:** Argon for the memo (one call per session, so cost is small). Revisit if memo quality is weak. Note: 3.8 Flash's price doubles on 2027-01-01; Flash-Lite is the fallback.
+## Audio and speakers
+- **80 ms frames of 16 kHz PCM from an AudioWorklet** `M1`. That's the same format the replay emits, so mic and replay share the pipeline byte for byte. *Alternative:* MediaRecorder webm/opus, with chunkier latency and a separate path.
+- **Browser audio processing off** `M1`. Auto gain would erase the loudness gap between you (near the mic) and the caller (on a phone speaker), which is what the labeler relies on. *Alternative:* browser defaults.
+- **Live audio drops, files wait** `M1`. A live call can't pause but a file can. A "fast" replay lost most of the call, because Deepgram transcribes at about real-time speed.
+- **Speakers labeled one by one, by loudness** `M1`. Deepgram split one voice into two speaker numbers, so labels are a list (`user_indices`), not one index. A manual swap overrides the labels and locks them. *Alternative:* "the loudest speaker is the user", which is wrong on exactly those cases.
+- **Merged voices are split by loudness** `M2`. When one diarized speaker holds a loud and a quiet group at least 6 dB apart, it becomes two voices. On a call with two similar voices, wrong roles fell from 10 of 29 lines to 2. *Alternative:* a spectral cue (phone audio is band-limited), stronger but a new audio feature.
 
-### 2026-10-20 · M0 · Keep Deepgram for speech-to-text
-- **Decision:** Stay with Deepgram streaming even though Gemini now has `gemini-3.5-transcribe-live`.
-- **Why:** Deepgram documents both features M1 depends on: interim results and speaker diarization. Two vendors for two jobs is acceptable.
-- **Alternative:** A single-vendor Gemini stack. Revisit in M1 if Deepgram's diarization struggles with speakerphone audio.
+## Understanding the call
+- **Rules first, Gemini only for fuzzy lines, quotes enforced** `M2`. Rules fill the offer within ~1 ms and work without a key. Gemini sees only lines with event cues ("signed a deal"), and anything it returns must quote what was actually said. *Alternative:* an LLM on every line, slower and less predictable.
+- **The offer comes from the caller's words only** `M2`. You repeating "five thousand shares?" isn't an offer term. Changes are kept as history ("was 5,000"), and the total is computed.
+- **Extract per sentence, and finalize after a pause** `M3`. Per stage everything took milliseconds, but a claim inside a long turn took 3.8 s from spoken to flagged. Two fixes brought it to 0.79 s: sentence-level extraction, and asking Deepgram to `Finalize` after a 0.45 s pause. *Alternative:* shorter endpointing, which splits turns everywhere.
+- **A claim's subject is the company in its own clause** `M4`. A read-aloud test checked "Apple … up 80%" against the stock on offer. Related fixes from the same test: a ticker is "offered" only when it's introduced or priced; LLM entities fill gaps but never overwrite; lines relabeled as the caller's are reprocessed. *Alternative:* an LLM to resolve the subject, slower and less explainable.
 
-### 2026-10-20 · M0 · TypeScript types generated via JSON Schema
-- **Decision:** Pydantic models → `TypeAdapter(TenorEvent).json_schema(mode="serialization")` → `json-schema-to-typescript`, run by `npm run gen:types`. The schema JSON is committed next to the generated `.ts`, and a backend test fails when it's stale.
-- **Why:** WebSocket messages aren't covered by OpenAPI codegen. Serialization mode plus `json_schema_serialization_defaults_required` makes every field the server always sends required in TS, so there's no `?` on `ts` or `type`. Field titles are dropped (otherwise json2ts makes an alias per field: `Ts1`, `Type2`…), and `--additionalProperties=false` removes the loose `[k: string]: unknown` index signature, so the types are strict enough to catch bad casts. The staleness test enforces the "never hand-write types" rule automatically.
-- **Alternative:** `pydantic2ts` (adds a Python dependency and still needs the same Node tool), or OpenAPI codegen (REST only).
+## Verifying claims
+- **Research is data first; the LLM only rewords, under a number guard** `M3`. Facts come from providers in ~0.3 s. Gemini's plain-words version is used only if every number in it appears in the data. The planned tool-use agent (3.8 Flash) failed 3 of 3 tries, and the guard caught "thirty-eight cents" and a dropped "−12.5%" on its first run. *Alternative:* an LLM tool-use agent, too unreliable during a call.
+- **Verdicts are simple arithmetic** `M3`. A % claim matches if the sign agrees and the gap is ≤ max(3 points, 25%). An offered price must be within 5% of the market. Events are matched against 90 days of news, and the headline is shown, not judged. Guarantees are "Couldn't verify". Generous tolerances avoid accusing an honest caller of rounding.
+- **"This quarter" = the last 13 weeks, and labeled as such** `M3`. That's the honest proxy on Finnhub's free tier; fund costs and candles are paid-only, so they show "Couldn't verify".
+- **A test register for fictional firms only** `M3`. The scam call can show "not in the register" without a claim about any real firm. Real firms show "Couldn't verify".
+- **Suggestions and risk are scored rules** `M3`. Every risk point traces to a listed reason, and a reason never loses points. Risk is shown only once something has been checked, so "Low" never reassures falsely. *Alternative:* an LLM ranking, slower and not explainable.
 
-### 2026-10-20 · M0 · App-level ping/pong on the health socket
-- **Decision:** The client sends `health.ping` every 5 s and the server echoes `client_sent_ms`; the client computes round-trip time. A missing status or pong triggers reconnect with backoff (1 → 10 s).
-- **Why:** Browser JS can't see WebSocket protocol pings. This gives a visible round-trip time, a latency-log entry, and a fallback state ("Can't reach Tenor's server") from the first commit.
-- **Alternative:** Rely on `onclose` only. That misses half-open connections.
+## Detecting pressure
+- **Two AI authors for the benchmark** `M4`. Claude Sonnet wrote the training lines. Claude Haiku wrote the held-out lines and most test calls from a separate brief, without seeing the training data. With one author, a classifier can score well by learning a writer's style. The first run proved it: precision 0.60 on the other author's lines.
+- **One round of feedback, disclosed** `M4`. After run 1, I added training lines of the two failure kinds (small talk, same-topic opposites), chose thresholds for F0.5 on training data, and made "strong" need a rule or p ≥ 0.9. The test set never changed, but the numbers are slightly optimistic, and the README says so. *Alternative:* tuning on the test set, which is leakage.
+- **The local classifier runs live, although Gemini scores higher** `M4`. Gemini zero-shot reached F1 0.92 vs. 0.84, but at ~660 ms vs. ~9 ms per line, with token costs and per-minute rate limits (429s). Alerts during a call need speed and reliability more than the last few points. *Alternative:* Gemini as an async second opinion, a good next step.
 
-### 2026-10-20 · M0 · Health status reports keys as booleans
-- **Decision:** `HealthStatus.services` says which API keys are set (`true/false`), never the values.
-- **Why:** The Start screen can show "Key missing" per service before a call starts, instead of failing mid-call.
-- **Alternative:** Fail at first use. Worse for Eszter and for reviewers running it without every key.
+## The memo
+- **Built from facts; Gemini words only the summary** `M5`. Every section is deterministic, with its moment in the call and its source. The summary is used only if its numbers come from the facts and it contains none of buy / sell / safe / scam / official; otherwise the template stays. *Alternative:* an LLM-written memo, with nothing to check it against.
+- **Hanging up never waits for the memo** `M5`. The writer runs in the background and saves to SQLite, and the browser polls. It's ready ~1 s after hang-up.
+- **Email only on an explicit Send** `M5`. Plain HTML, no tracking, and an idempotency key so a double click is harmless. Sending a message is the user's decision. *Alternative:* auto-email on hang-up.
 
-### 2026-10-20 · M0 · Latency log as JSONL
-- **Decision:** `pipeline/latency.py` appends `{ts, stage, ms, ...}` lines to `backend/logs/latency.jsonl` (gitignored), via `timed("stage")` or `record(...)`.
-- **Why:** Append-only, survives crashes, easy to grep, and needs nothing new at M0. The M4 eval screen reads it.
-- **Alternative:** SQLite now. Deferred to M4, when eval runs need SQLite anyway.
+## Engineering
+- **TypeScript types generated from the Pydantic events** `M0`. Pydantic → JSON Schema → `json-schema-to-typescript`, strict (no loose index signatures), with a test that fails when they're stale. WebSocket messages aren't covered by OpenAPI codegen.
+- **Event bus with a bounded queue per subscriber** `M1`. `publish()` never blocks, and on overflow the oldest event is dropped and logged. It was pulled forward from M2 so components used the bus from day one.
+- **An explicit end-of-call chain** `M2`. Each stage publishes a `*.closed` marker, so a slow result can't miss the memo. The M3 test suite found a race where a price check could be lost; `offer.closed` fixed it. *Alternative:* fixed sleeps, either too slow or too short.
+- **Latency as JSONL** `M0`. Every stage appends to `backend/logs/latency.jsonl`. It survives crashes and is easy to grep.
+- **Test calls voiced by TTS, macOS voices as fallback** `M2`. Scripted calls are reproducible. Gemini TTS stalled after 12 of 42 lines, so the committed WAVs use `say`. The phone side is band-limited and quieter, like a speakerphone.
+- **Dark theme inspired by Hiya** `M1`, with Hiya's Branded Call page as the reference. The calm rules still hold: one accent, severity always with a label.
 
-### 2026-10-20 · M0 · Backend is a uv "virtual" project with top-level packages
-- **Decision:** `package = false` in `pyproject.toml`; `app/`, `pipeline/`, `audio/` etc. are imported from `backend/` (pytest `pythonpath = ["."]`).
-- **Why:** Matches the documented commands exactly (`uvicorn app.main:app`, `python -m audio.replay`) with no install step.
-- **Alternative:** `src/` layout with an installable package. More ceremony for a prototype.
-
-### 2026-10-20 · M0 · Event bus waits for M2
-- **Decision:** M0 has only the event base class (`pipeline/events.py`); `pipeline/bus.py` arrives in M2.
-- **Why:** The milestone plan puts the bus in M2, and the skeleton shouldn't guess its shape before there are two components to connect.
-- **Alternative:** Stub the bus now. That would be empty code with no consumer.
-
-### 2026-10-20 · M0 · Same-origin dev setup and self-hosted fonts
-- **Decision:** Vite proxies `/api` and `/ws` to `localhost:8000`. Fonts come from `@fontsource` packages.
-- **Why:** One origin means no CORS config, and the frontend uses relative URLs. Self-hosted fonts mean no external request at page load, and the demo works offline.
-- **Alternative:** CORS middleware, Google Fonts `<link>`.
-
-### 2026-10-20 · M0 · `httpx2` for the test client
-- **Decision:** Dev dependency `httpx2` instead of `httpx`.
-- **Why:** The installed Starlette warns that `httpx` with its `TestClient` is deprecated in favor of `httpx2`.
-- **Alternative:** Pin `httpx` and live with the warning.
-
----
-
-### 2026-10-20 · M1 · Event bus and a minimal replay pulled into M1
-- **Decision:** `pipeline/bus.py` and `FileSource` + one short test call (`m1_hello.wav`) ship in M1, although the plan lists them under M2.
-- **Why:** M1 already has three components (transcriber → labeler → panel), and the rule is that components talk only through the bus. The milestone acceptance criteria also require every demo to work on replay. M2 now just adds subscribers and the two full scripted calls.
-- **Alternative:** Direct calls in M1, refactored onto a bus in M2. That would be work done twice and would break the rule for a day.
-
-### 2026-10-20 · M1 · Bus: one bounded queue per subscriber, drop oldest
-- **Decision:** `publish()` never blocks. Each subscriber has its own queue (1000 events); on overflow the oldest event is dropped and logged.
-- **Why:** A slow consumer (the future research agent) must never delay a fast one (the transcript).
-- **Alternative:** One shared queue, or blocking publish. Both let one slow stage stall the call.
-
-### 2026-10-20 · M1 · Deepgram Nova-3 over a raw WebSocket
-- **Decision:** `wss://api.deepgram.com/v1/listen` with `model=nova-3`, `diarize_model=latest`, `interim_results`, `endpointing=300`, `utterance_end_ms=1000`, `smart_format`, through the `websockets` library (already installed), not the Deepgram SDK.
-- **Why:** Deepgram recommends Nova-3 for multi-speaker audio. Its newer Flux model (on `/v2/listen`) is built for voice-agent turn-taking, and its docs don't document diarization. `diarize_model=latest` is the current switch (`diarize=true` is deprecated). With the raw socket I control every timeout, the KeepAlive (every 4 s of silence; Deepgram closes at 10 s), reconnects (3, with backoff, timestamps re-based) and the fallback states. Checked on developers.deepgram.com on 2026-10-20.
-- **Alternative:** The Deepgram Python SDK: less code, but its reconnect and timeout behavior is harder to see and test.
-
-### 2026-10-20 · M1 · 80 ms frames of 16 kHz linear16
-- **Decision:** Every audio source emits 1280-sample (2560-byte) frames. The browser downsamples in an AudioWorklet.
-- **Why:** Inside the architecture's 20–100 ms range, and Deepgram's documented recommendation. One format means mic and replay share the pipeline byte for byte.
-- **Alternative:** MediaRecorder webm/opus: simpler in the browser, but chunkier latency and a different path from replay.
-
-### 2026-10-20 · M1 · Browser audio processing off
-- **Decision:** `getUserMedia` with `echoCancellation`, `noiseSuppression` and `autoGainControl` all `false`.
-- **Why:** AGC would level out exactly the loudness difference the speaker labeler uses (you near the mic, the caller on a phone speaker). Noise suppression can treat speakerphone audio as noise. Echo cancellation has nothing to cancel: the laptop plays no far-end audio.
-- **Alternative:** Browser defaults. Revisit if real speakerphone tests show noise problems.
-
-### 2026-10-20 · M1 · Speaker labels: each diarized speaker labeled on its own
-- **Decision:** The labeler (not the transcriber) publishes `utterance.*`. `speakers.updated` carries a list, `user_indices`. After 2 s of speech from at least two speakers with a gap of 3 dB or more, every speaker is classified against the loudness midpoint (±1 dB hysteresis). A manual swap inverts and locks, and later speakers are classified against the two hand-labeled groups. Single-word speaker flips are smoothed. Partial lines show no role ("Speaking…") until final.
-- **Why:** The first real replay showed Deepgram splitting one voice into two speaker numbers (0 and 2) and giving the caller's first word to the previous speaker. A single "user index" would have relabeled the opening "Hello?" as the caller. Interim speaker numbers also flip before the final result.
-- **Alternative:** One user index ("the loudest speaker"): simpler, but wrong on exactly those cases.
-
-### 2026-10-20 · M1 · Live audio drops, files wait
-- **Decision:** For real-time sources (mic), the 5 s audio buffer drops the oldest frame when full. For files, the pump waits (backpressure). The replay CLI always plays in real time.
-- **Why:** A live call can't pause, but a file can. A "fast" replay lost most of the call: Deepgram's live API transcribes at about real-time speed, so faster input only stalls the end.
-- **Alternative:** Batch (pre-recorded) API for fast evaluation runs. Possibly in M4.
-
-### 2026-10-20 · M1 · Test call generated with macOS voices
-- **Decision:** `fixtures/calls/make_m1_clip.py` builds `m1_hello.wav` from two `say` voices. The caller is band-limited to 300–3400 Hz and 8 dB quieter, like a phone on speaker.
-- **Why:** Free, reproducible, scripted exactly, and it exercises the loudness heuristic. Fictional firm and ticker only.
-- **Alternative:** A human recording: more realistic, not reproducible. Still an option for the M2 scripted calls.
-
-### 2026-10-20 · M1 · Dark Hiya-inspired theme
-- **Decision:** Dark only: deep indigo surfaces, Hiya-like violet as the single accent, a purple→cyan gradient only on brand moments (wordmark, Start headline). Plus Jakarta Sans (display), Nunito Sans (body), IBM Plex Mono (numbers). The transcript has its own voice tokens (cyan rule for the caller, raised bubble for you). All text is at least 5.4:1 contrast.
-- **Why:** Your call, with Hiya's Branded Call page as the reference. The calm rules (one accent, severity always with a text label, motion only for news) still hold.
-- **Alternative:** Hiya styling on the Start screen only, or both themes restyled.
-
-### 2026-10-20 · M1 · Generated types: one root object
-- **Decision:** `schema_export` emits a root `TenorWire` object referencing `TenorEvent` and the REST payloads (`ReplayList`).
-- **Why:** json-schema-to-typescript 16 ignores `--unreachableDefinitions`, so REST models not referenced from the event union weren't generated. A root that references everything makes them all reachable.
-- **Alternative:** Hand-writing the REST types. Not allowed by the rules.
-
----
-
-### 2026-10-20 · M2 · Extraction: rules first, Gemini only for fuzzy lines, quotes enforced
-- **Decision:** Rules (regex + number-word normalizer + catalogs) extract every offer term, names, tickers, and the clear claims (price moves, guarantees, fund expense ratios). Gemini runs only on caller lines with company-event cues ("signed a deal") or on the first lines while name or firm is unknown, asynchronously. Anything it returns must quote words that were actually said, or it's dropped. If it fails or times out, the event sentences become rule claims.
-- **Why:** The offer card must fill within milliseconds and work without a key. On both scripts, rules alone reproduce the full expected offer. Quote enforcement stops the LLM from inventing claims.
-- **Alternative:** LLM for every utterance: slower, costlier, and less predictable (see the latency entry below).
-
-### 2026-10-20 · M2 · Extraction model: `gemini-3.1-flash-lite`, 8 s async budget
-- **Decision:** Default `TENOR_MODEL_FAST=gemini-3.1-flash-lite` (was `gemini-3.5-flash-lite`), `TENOR_LLM_TIMEOUT_S=8`, enforced with `asyncio.wait_for`. The HTTP option stays at Gemini's 10 s minimum.
-- **Why:** Measured today with identical structured-output requests: 3.1-flash-lite took 1.3–5.4 s (one outlier at 23.8 s), while 3.5-flash-lite took 8–30 s and often timed out. 3.1 is also cheaper ($0.25 / $1.50 per 1M). Gemini rejects an HTTP timeout under 10 s ("Minimum allowed deadline is 10s"), so a 2.5 s HTTP timeout made every call fail. Small samples, so M4 re-measures.
-- **Alternative:** Keep 3.5-flash-lite for quality. Not worth it while it can't answer within a call.
-
-### 2026-10-20 · M2 · Entity kinds `person`, `payment`, `fee` added
-- **Decision:** Beyond the architecture's `ticker|price|percent|quantity|deadline|firm`.
-- **Why:** The wireframe shows the caller's name, and the Offer model has payment and fees fields that need a source.
-- **Alternative:** A separate caller-identity event. More plumbing for the same data.
-
-### 2026-10-20 · M2 · Claims extracted but not shown until M3
-- **Decision:** `claim.extracted` is published (status `checking`) but not rendered.
-- **Why:** With no checker until M3, the UI would show "Checking…" forever, which isn't honest.
-- **Alternative:** Show them as "Not checked yet". Noise for Eszter during a call.
-
-### 2026-10-20 · M2 · Offer: caller's words only, computed total, quiet upgrades
-- **Decision:** Only `speaker == caller` entities fill the offer. A different value is a `TermChange` ("was 5,000"). The same value heard more clearly (unsure → matched) upgrades without a change event. Total = price × quantity, marked `computed`.
-- **Why:** You repeating "five thousand shares?" isn't an offer term. Changes like a doubled quantity are a signal M4 will use.
-- **Alternative:** Accept any speaker. Echoes would create fake changes.
-
-### 2026-10-20 · M2 · End-of-call chain
-- **Decision:** `transcript.closed` → labeler → `utterances.closed` → extractor (waits for pending LLM calls, ≤ 9 s) → `entities.closed` → offer tracker → `call.ended`.
-- **Why:** Without the chain, a slow LLM result or the last utterance could arrive after `call.ended` and be lost to the memo (M5).
-- **Alternative:** Fixed sleeps before `call.ended`. Either too slow or too short.
-
-### 2026-10-20 · M2 · Scripted calls voiced by Gemini TTS, per turn, cached
-- **Decision:** `make_calls.py` sends one `gemini-3.8-flash-tts` request per turn (Interactions API), one voice per role (Charon for the pushy caller, Leda for the adviser, Sulafat for you), resamples to 16 kHz, applies the same phone simulation as M1, and caches each turn.
-- **Why:** Natural voices make the demo and the transcription test realistic. Per-turn generation lets the caller's voice be band-limited separately, and the cache means editing one line re-voices only that line.
-- **Alternative:** Multi-speaker TTS in one request: fewer calls, but no per-role processing.
-- **What actually happened (2026-10-20):** Gemini TTS voiced 12 of 42 lines, then stopped responding. Requests hung past a 75 s cap and through three retries, and a single two-word probe with SDK retries off didn't return within 60 s either. So the committed WAVs use the **`--voices macos` fallback** (same scripts, processing and levels). Rerunning `make_calls.py` swaps in the Gemini voices with one command; the cache keeps the 12 finished lines. Lesson applied: the generator now has a per-request timeout and retries, as the product's own external calls do.
-
-### 2026-10-20 · M2 · `websockets` 16.x
-- **Decision:** Accept `google-genai`'s pin, which downgraded `websockets` 17.3 → 16.1.1.
-- **Why:** The transcriber only uses the asyncio client API available since 14.x, and all transcriber tests (including the fake Deepgram server) pass on 16.1.1.
-- **Alternative:** Fight the pin. No benefit.
-
-### 2026-10-20 · M2 · Merged voices: split one diarized speaker by loudness
-- **Decision:** When one diarized speaker's final turns form a loud and a quiet group at least 6 dB apart (`SPLIT_DB`), the labeler splits it into two voices. The speaker number keeps the group that holds its first turn; the other group gets voice number 100 + n. The loud group is the user. A split needs about a word in the smaller group (0.3 s), 2 s in the larger one, and the two groups must land on opposite sides of the call's loudness midpoint, so no split is made where it wouldn't change a label. After a split, each stretch of that speaker's words between pauses of 0.3 s or more goes to the nearer group, so a turn change Deepgram didn't mark still starts a new line. After a manual swap, no new splits. The event contract is unchanged: `speaker_index` is now a voice number, and the UI relabels by `user_indices` as before.
-- **Why:** Deepgram put two similar female voices on one speaker number, so one side of the call took the other's role. The extractor and the offer tracker read the role when a line is sent, so the split has to label the line that reveals it, not only later ones. That's why one word is enough for the smaller group: the user's "Hello?" is 0.4 s in every real replay. Measured live: the honest call re-voiced with two female voices, where Deepgram put both on speaker 1 from 0:03; wrong roles went from 10 of 29 lines to 2 (short fragments on speaker 0). Measured offline, on words, speaker numbers and levels recorded from real replays and fed through the old and the new labeler: the two committed calls come out identical, and with every word moved onto one speaker (the original failure) the old labeler shows no caller line and an empty offer, while the new one reproduces both expected offers exactly. The worst labeler step is 0.4 ms.
-- **Alternative:** (1) Re-send earlier lines with a corrected role: fixes the history, but the extractor and the UI would have to handle revised finals (a contract change). (2) Route every turn by its own loudness, ignoring diarization: changes healthy calls, and one voice's word levels spread about ±5 dB. (3) A spectral cue (phone audio is band-limited to 300–3400 Hz): a stronger signal, but a new audio feature; worth it if loudness proves too weak on real speakerphones.
-
----
-
-### 2026-10-21 · M3 · Research is data first; the LLM only rewords, under a number guard
-- **Decision:** When a ticker or firm is first mentioned, the research agent fetches facts from providers (no LLM) and publishes a template summary in ~0.3 s. Gemini then rewrites it in plain words. The rewrite is accepted only if every number in it (after normalizing numbers written as words) appears in the facts, and every percentage from the template is still there. Otherwise the template stays.
-- **Why:** Your choice, backed by measurements: `gemini-3.8-flash`, the planned tool-use model, returned 503/504 in 3 of 3 tries, so an LLM-driven agent might never answer during a call. The first real rewording also showed the guard was needed: Gemini wrote numbers as words ("thirty-eight cents"), which would have slipped past a digits-only check, dropped the key "−12.5%", and called a test register "official" (now forbidden in the prompt).
-- **Alternative:** A Gemini tool-use agent (the original architecture). More flexible, but too unreliable today.
-
-### 2026-10-21 · M3 · Hedged LLM calls
-- **Decision:** `TENOR_MODEL_FAST` is a list (`gemini-3.5-flash-lite,gemini-3.1-flash-lite`). Each request goes to all models at once; the first valid answer wins and the rest are cancelled. Used for extraction and rewording.
-- **Why:** Per-model latency flipped within a day: 3.5-flash-lite went from 8–30 s to 0.8 s, 3.1-flash-lite from 1.3 s to 3–19 s. Picking one model by yesterday's numbers would have been wrong today. Requests are ~300 tokens, so double cost is about $0.004 per call.
-- **Alternative:** One model with sequential fallback. That waits out the full timeout before trying the second.
-
-### 2026-10-21 · M3 · Finnhub free tier, 13-week return = "this quarter"
-- **Decision:** Real tickers use Finnhub `quote`, `stock/metric` (5-day, MTD, 13-week, YTD, 52-week returns), `stock/profile2` and `company-news`. "This quarter" maps to the 13-week return and is labeled as such. Fund costs (ETF profile) and price history (candles) are paid-only (403), so they're "Couldn't verify".
-- **Why:** Probed with your key: 200–300 ms each. A trailing 13-week window is the honest free proxy for "this quarter", and the label says exactly which window was used.
-- **Alternative:** Paid candles for exact calendar quarters.
-
-### 2026-10-21 · M3 · Verdict rules
-- **Decision:** A % claim is "verified" if the sign matches and the gap is ≤ max(3 points, 25% of the claim), otherwise "doesn't match data". An offered price must be within 5% of the market quote. Company events are matched by keywords against 90 days of news: no match = "No evidence found", a match = "Couldn't verify" plus the headline, so you judge it. Guarantees are "Couldn't verify" ("share prices can't be guaranteed").
-- **Why:** Simple arithmetic someone can check by hand. Generous tolerances avoid accusing an honest caller of rounding. Headlines are shown, never judged by an LLM.
-- **Alternative:** An LLM decides whether a headline confirms the claim. Not allowed by the rules.
-
-### 2026-10-21 · M3 · Fictional firms: a test register
-- **Decision:** `fixtures/register.json` stands in for a regulator register, for fictional firms only. Real or unknown firms are "Couldn't verify", and the source is labeled "Tenor test register (fictional firms only)".
-- **Why:** Lets the scam call show "not in the register" without a claim about any real firm.
-- **Alternative:** Scrape a real register: out of scope and fragile.
-
-### 2026-10-21 · M3 · Suggestions and risk are scored rules
-- **Decision:** "Say this" lines are fixed first-person templates with priorities: a false claim 100, firm not registered 90, guarantee 85, same-day deadline 80, no evidence 75, price mismatch 70, risky payment 65, amount raised 60. At most 2 are visible, research cards fill the rest of the 4 slots, and "say this" lines expire after 2 minutes. Risk is a capped sum of listed reasons (30/25/15/10…), with levels at 25/50/75. It's shown only once something has been checked.
-- **Why:** Deterministic and explainable; every point traces to a reason. Mixing advice and evidence follows the wireframe. Showing "Low" before anything is checked would falsely reassure.
-- **Alternative:** An LLM ranks suggestions. Slower, and not explainable.
-
-### 2026-10-21 · M3 · Labeler fix merged before M3
-- **Decision:** `main` fast-forwarded to `labeler/split-merged-voices` (a merged speaker is split by per-utterance loudness).
-- **Why:** Your call. M3's demo depends on which lines count as the caller's.
-
-### 2026-10-21 · M3 · Extract per sentence, not per turn
-- **Decision:** The labeler publishes `utterance.progress` (finalized words of a turn still in progress), and the extractor processes each completed sentence right away; the final utterance only adds what's left. The checker measures `claim.flag_e2e` from the end of the claim's audio.
-- **Why:** Measured end to end, a claim inside a long turn waited for the whole turn to end: 3.8–5.0 s from spoken to flagged, against a 2 s target, while every stage on its own took milliseconds. Per-stage timing hid it.
-- **Alternative:** Shorter endpointing in Deepgram. That splits turns at small pauses and makes labels noisier.
-
-### 2026-10-21 · M3 · `offer.closed` in the end-of-call chain
-- **Decision:** The offer tracker publishes `offer.closed` after its last update, and the checker stops on that, not on `entities.closed`.
-- **Why:** The M3 test suite (written by a second model) found a race: with a burst of final utterances, `entities.closed` reached the checker before the tracker's last `offer.updated`, so a price check could be lost.
-- **Alternative:** A fixed delay before closing. Racy and slower.
-
-### 2026-10-21 · M3 · Ask Deepgram to finalize after a 0.45 s pause
-- **Decision:** The transcriber watches frame loudness. After 0.45 s of silence following speech, it sends Deepgram `{"type":"Finalize"}` once per pause. A result flushed this way (`from_finalize`) finalizes its words but doesn't end the turn.
-- **Why:** On the full scam call, Deepgram returned "…up 40% this quarter." and your reply "40%? That sounds like a lot." as one final segment, 3.8 s after the claim. Even sentence-level extraction couldn't act before that. With Finalize, spoken → flagged dropped to 0.79 s. A first version at 0.3 s that also ended the turn split sentences into fragments ("Most people haven't," / "Yet."), hence 0.45 s and turn-preserving flushes. A 40-second trimmed test file had first suggested 0.94 s; that was an artifact, because the file's end forced the flush.
-- **Alternative:** Lower Deepgram's `endpointing`. It didn't fire on this 0.6 s gap, and shorter endpointing splits turns everywhere.
-
----
-
-### 2026-10-21 · M4 · Two AI authors for the benchmark
-- **Decision:** Training lines (240 + 130) were written by Claude Sonnet. The 80 held-out test lines and 9 of the 12 test calls were written by Claude Haiku from a separate brief, with no access to the training data. 3 calls were written by Opus (KSTL, VOO, and your Silverline dialogue). A cosine check found no near-duplicates between train and test (max 0.85).
-- **Why:** Your choice. With one author, a classifier can score well by learning that writer's style. The first evaluation proved the point: thresholds tuned on training data gave precision 0.60 on the other author's lines.
-- **Alternative:** One author with a random split (optimistic scores), or hand-labeled lines (most credible, but needs your time).
-
-### 2026-10-21 · M4 · One round of feedback from the first evaluation, disclosed
-- **Decision:** After the first run (precision 0.60; 5 of 7 honest calls rated high), I added 130 training lines of the two failure *kinds*: short small talk, and same-topic opposites ("feel free to talk it over with your family"). I described the kinds, not the test lines. I also changed three things on principle: thresholds now maximize F0.5 on out-of-fold *training* predictions; "strong" needs a rule or p ≥ 0.9; mild flags add 3 risk points instead of 5. The test set was not changed.
-- **Why:** Sentence embeddings capture the topic (family, guarantees) more than the polarity, so the classifier needed examples of opposite intent on the same topic. For an alert during a call, a false alarm costs more trust than a miss, and the rules add recall back. Because the changes were prompted by the first test results, the final numbers are slightly optimistic, and the report says so.
-- **Alternative:** Tune thresholds on the test set. That would be leakage, so the numbers would mean nothing.
-
-### 2026-10-21 · M4 · The local classifier stays on the live path, although the LLM scores higher
-- **Decision:** Live detection uses classifier + rules (F1 0.84, ~9 ms per line). Gemini zero-shot scored higher on the held-out lines (F1 0.93) but takes ~660 ms per line, costs tokens, and hit the per-minute quota (HTTP 429) even when run one line at a time during the evaluation.
-- **Why:** During a call the detector runs on every caller sentence and must answer in under 300 ms, offline and without a quota. Accuracy alone would favor the LLM; latency, reliability and cost favor the local model. Reported as measured, not as a win.
-- **Alternative:** The LLM as the primary detector, or as an async second opinion that can upgrade or retract a flag a second later. The second option is a good M5+ follow-up.
-
-### 2026-10-21 · M4 · Rate limits are part of the measurement
-- **Decision:** The baseline runs one line at a time with exponential backoff, and caches every answer by model + text. The LLM wrapper now logs the error message, not just the type.
-- **Why:** At 4 and then 2 concurrent hedged requests, 42 and then 9 of 80 lines failed with 429 RESOURCE_EXHAUSTED. Spaced out, all succeeded, so it's a per-minute limit. Counting failures as "no tactic" first made Gemini look worse than it is (recall 0.41).
-- **Alternative:** Report the failed run. Unfair to the baseline.
-
-### 2026-10-21 · M4 · Fixes from your read-aloud dialogue (Silverline)
-- **Decision:** (1) A claim's subject is the company named in the claim's own clause. (2) Tickers are "offered" only when introduced ("the ticker is", "a company called", "heard of") or priced; mentions like "the next Apple" are researched but don't change the offer. (3) LLM-sourced entities may fill an empty offer field but never overwrite one, and LLM "names" that are known company names are dropped. (4) When a relabel turns a "You" line into the caller's, the extractor and the pressure detector reprocess it.
-- **Why:** The replay checked "Apple … up 80%" against Bluewater's data, briefly made Apple the offer, showed "Bluewater Lithium" as the caller, and lost the caller's intro because the caller spoke first. Text-based tests can't produce these; real transcripts can.
-- **Alternative:** An LLM to resolve claim subjects. Slower, and the clause rule is explainable.
-
----
-
-### 2026-10-21 · M5 · The memo is built from facts; Gemini only words the summary, under guards
-- **Decision:** `memo/builder.py` builds every section deterministically from the call record (offer + history, checked claims, register research, tactic flags, "say this" lines, risk reasons), each item with its moment in the call and its source. Gemini writes only the 3–4 sentence summary. It's used only if every number in it appears in the facts and it contains none of buy / sell / safe / scam / official; otherwise the template summary stays.
-- **Why:** The rule is "the LLM extracts and explains; it never decides". A memo that invents a number or sounds like advice would break the product's promise. On the first real run, Gemini's summary called the test register "official", now caught by the word guard.
-- **Alternative:** The LLM writes the whole memo. Better prose, but nothing to check it against.
-
-### 2026-10-21 · M5 · Hang-up never waits for the memo
-- **Decision:** `call.ended` goes out as before. The memo writer runs in the background, saves to SQLite (`backend/data/tenor.sqlite`), and the browser polls `GET /api/calls/{id}/memo`.
-- **Why:** The memo involves an LLM call, and Gemini latency ranged from under 1 s to 30 s in this project. The UI shows "Writing your memo…" instead of a frozen call screen. Measured: ready about 1 s after hang-up on real calls.
-- **Alternative:** Keep the socket open until the memo arrives. That couples the call lifecycle to an LLM.
-
-### 2026-10-21 · M5 · Hedged memo model, with the right thinking level per model
-- **Decision:** `TENOR_MODEL_MEMO="gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite"`, hedged. Flash-Lite models get thinking `minimal`, others `low`.
-- **Why:** 3.8-flash returned 503/504 on two days running, so a single memo model would often time out. Its 400 error on the first memo run was my configuration, not an outage: it rejects `minimal`.
-- **Alternative:** 3.8-flash alone with a long timeout. Slower, and it fails when the model is down.
-
-### 2026-10-21 · M5 · Email via Resend, user-initiated only
-- **Decision:** The memo screen has an explicit **Send** button. `POST /api/calls/{id}/email` sends plain HTML + text (no tracking, no images) from Resend's sandbox sender, with an `Idempotency-Key` per call + recipient, a 10 s timeout, and a plain-words fallback ("You can still read or print the memo here"). Nothing is ever sent automatically.
-- **Why:** The architecture says the demo must not depend on an inbox, and sending a message is the user's decision. The idempotency key makes a double click harmless.
-- **Alternative:** Auto-email on hang-up. Surprising, and it sends data out without being asked.
-
-### 2026-10-21 · M5 · One suggested reply reworded
-- **Decision:** The "everyone's doing it" reply is now "What other people **do** doesn't matter to me" (was "buy").
-- **Why:** The new memo check (no buy / sell / safe / scam in anything Tenor says) flagged it. It wasn't advice, but a rule that's easy to check is better than one with exceptions. Quotes of the caller are exempt, since quoting them is the point.
+## Hosting
+- **The browser talks to the backend directly** `hosting`. The frontend (Vercel) has one build-time setting, `VITE_BACKEND_URL`, for REST and WebSockets. The backend allows that origin (`ALLOWED_ORIGINS`) and checks the `Origin` of both sockets, since CORS doesn't cover WebSockets. Vercel rewrites can't proxy WebSockets. *Alternative:* serving the frontend from FastAPI, one origin but no CDN.
+- **A Docker image with CPU-only PyTorch and the model baked in** `hosting`. The default Linux torch pulled CUDA and Triton (17 wheels, 3.0 GB) for a server with no GPU; the CPU wheel is 0.2 GB. The embedding model is downloaded at build time, and the build fails if the classifier can't load offline, because a silent fallback to rules only would cost recall. *Alternative:* Railway's default builder, with no control over either.

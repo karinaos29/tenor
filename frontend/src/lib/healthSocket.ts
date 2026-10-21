@@ -1,3 +1,4 @@
+import { wsUrl } from "./backend";
 import type { HealthPing } from "./events.gen";
 import { applyHealthConnecting, applyHealthEvent, applyHealthFailure, backoffSeconds, parseServerEvent } from "./healthState";
 import { setHealthState, useHealthStore } from "../stores/health";
@@ -57,10 +58,9 @@ export function startHealthSocket(): () => void {
     if (stopped) return;
     update(applyHealthConnecting);
     missedPongs = 0;
-    const scheme = location.protocol === "https:" ? "wss" : "ws";
     let socket: WebSocket;
     try {
-      socket = new WebSocket(`${scheme}://${location.host}/ws/health`);
+      socket = new WebSocket(wsUrl("/ws/health"));
     } catch {
       fail();
       return;

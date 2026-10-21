@@ -1,0 +1,19 @@
+# Context for backend/Dockerfile (built from the repo root). Only backend/ and
+# eval/results/ are used; keep secrets and local environments out of the image.
+.git
+.claude
+.env
+.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+frontend
+docs
+eval/data
+backend/data
+backend/logs
+backend/fixtures/calls/.tts_cache
+*.sqlite
+*.db
+.DS_Store

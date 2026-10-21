@@ -24,3 +24,6 @@ backend/logs/
 .vscode/
 backend/fixtures/calls/.tts_cache/
 backend/data/
+
+# Personal notes (kept locally, not uploaded)
+notes/

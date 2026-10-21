@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     memo_email_from: str = "Tenor <onboarding@resend.dev>"  # Resend's sandbox sender
     memo_email_to: str = ""  # optional: prefills the recipient on the memo screen
 
+    # Hosting: comma-separated browser origins allowed to call the API and open the sockets,
+    # e.g. the Vercel frontend. Empty = local development, everything allowed.
+    allowed_origins: str = ""
+    # Where saved calls live (SQLite). Empty = backend/data. On Railway: the volume's mount path.
+    tenor_data_dir: str = ""
+
+    @property
+    def origins(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.allowed_origins.split(",") if o.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
