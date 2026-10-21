@@ -2,7 +2,7 @@
 
 Tenor is a live copilot for high-pressure investment sales calls. The user puts a phone call on speaker; Tenor listens through the laptop microphone, transcribes both sides, checks the caller's claims against data, flags pressure tactics, suggests what to ask back, and sends a decision memo after the call.
 
-This is a prototype for the Hiya Voice AI Challenge (summer internship take-home). Reviewers care about: a polished end-to-end prototype, a clear architecture, visible milestones, and the reasoning behind decisions. No real telephony: microphone input (and recorded-call replay) only.
+No real telephony: microphone input (and recorded-call replay) only.
 
 Full design: `docs/architecture.md`. Read it before any structural change.
 
