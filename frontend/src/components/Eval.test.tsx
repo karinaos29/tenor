@@ -61,8 +61,8 @@ const report: EvalReport = {
     { name: "Gemini LLM", rows: [m("urgency", 0.7)], micro: m("all", 0.7), any_tactic: m("any", 0.8), latency_ms_median: 900, note: "" },
   ],
   calls: [
-    { name: "scam_a", kind: "manipulative", hard_honest: false, expected: "high or critical", risk_score: 80, risk_level: "high", ok: true, false_claims_expected: 2, false_claims_caught: 2, tactic_recall: 0.8, tactic_precision: 0.9, max_visible_suggestions: 4 },
-    { name: "honest_b", kind: "honest", hard_honest: true, expected: "low or medium", risk_score: 70, risk_level: "high", ok: false, false_claims_expected: 0, false_claims_caught: 0, tactic_recall: null, tactic_precision: null, max_visible_suggestions: 1 },
+    { name: "scam_a", kind: "manipulative", hard_honest: false, expected: "high or critical", risk_score: 80, risk_level: "high", ok: true, false_claims_expected: 2, false_claims_caught: 2, tactic_recall: 0.8, tactic_precision: 0.9, max_visible_suggestions: 4, memo_ok: null, memo_s: null },
+    { name: "honest_b", kind: "honest", hard_honest: true, expected: "low or medium", risk_score: 70, risk_level: "high", ok: false, false_claims_expected: 0, false_claims_caught: 0, tactic_recall: null, tactic_precision: null, max_visible_suggestions: 1, memo_ok: null, memo_s: null },
   ],
   latency: [], audio: false,
 };

@@ -367,6 +367,54 @@ class TacticFlagged(Event):
     flag: TacticFlag
 
 
+# --- The decision memo (M5) -----------------------------------------------------------
+
+
+class MemoItem(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    text: str
+    detail: str = ""
+    t: float | None = Field(default=None, description="Moment in the call (seconds), for 'jump to transcript'")
+    source: str = ""
+    tone: Literal["neutral", "ok", "warn", "danger"] = "neutral"
+
+
+class MemoSection(BaseModel):
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    id: str
+    title: str
+    items: list[MemoItem]
+    empty: str = Field(default="", description="Shown when there are no items")
+
+
+class Memo(BaseModel):
+    """Built from the call's facts; the LLM may only word the summary (under guards)."""
+
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
+
+    call_id: str
+    created_at: datetime
+    started_at: datetime
+    duration_s: float
+    source: AudioSourceKind
+    replay_id: str | None
+    risk_score: int | None
+    risk_level: RiskLevel | None
+    headline: str
+    summary: str
+    summary_wording: Literal["template", "gemini"]
+    sections: list[MemoSection]
+    transcript: list[Utterance]
+    note: str = Field(description="What the memo is and isn't (Tenor never says buy or sell)")
+
+
+class MemoReady(Event):
+    type: Literal["memo.ready"] = "memo.ready"
+    call_id: str
+
+
 # --- Bus-internal events (never sent to the browser) ------------------------------
 
 
@@ -543,6 +591,8 @@ class CallResult(BaseModel):
     tactic_recall: float | None
     tactic_precision: float | None
     max_visible_suggestions: int
+    memo_ok: bool | None = Field(default=None, description="Memo written, with no buy/sell/safe/scam wording")
+    memo_s: float | None = Field(default=None, description="Hang-up to memo ready, seconds")
 
 
 class StageLatency(BaseModel):
@@ -582,4 +632,38 @@ class EvalResponse(BaseModel):
     report: EvalReport | None
 
 
-REST_MODELS: list[type[BaseModel]] = [ReplayList, EvalResponse]
+class CallMemoResponse(BaseModel):
+    status: Literal["live", "writing", "ready", "failed", "unknown"]
+    memo: Memo | None
+
+
+class EmailRequest(BaseModel):
+    to: str
+
+
+class EmailResult(BaseModel):
+    ok: bool
+    message: str
+    id: str | None = None
+
+
+class EmailDefaults(BaseModel):
+    configured: bool = Field(description="A Resend key is set")
+    to: str | None = Field(description="Prefilled recipient (MEMO_EMAIL_TO), if any")
+
+
+class SavedCall(BaseModel):
+    call_id: str
+    started_at: datetime
+    source: str
+    replay_id: str | None
+    status: str
+    risk_level: str | None
+    headline: str | None
+
+
+class SavedCallList(BaseModel):
+    calls: list[SavedCall]
+
+
+REST_MODELS: list[type[BaseModel]] = [ReplayList, EvalResponse, CallMemoResponse, EmailRequest, EmailResult, EmailDefaults, SavedCallList]

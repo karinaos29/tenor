@@ -80,6 +80,19 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 2. **Gemini zero-shot beat my classifier on accuracy:** F1 0.92 vs 0.84 on the held-out lines. I kept the classifier on the live path anyway, for latency (~9 ms vs ~660 ms), the quota (Gemini hit 429s even one line at a time), offline use and cost, and I report the trade-off as it is. Using the LLM as an async second opinion is the natural next step.
 3. **Your read-aloud dialogue found four bugs the synthetic tests hadn't:** a claim checked against the wrong company ("Apple … is up 80%, and Bluewater is the next Apple"), a comparison mention becoming the offer, an LLM-found "name" overwriting the caller's name, and the caller's intro lost because the caller spoke first. Each is fixed and pinned by a test built from Deepgram's actual transcript.
 
+### Who did what in M5 (Used)
+
+| Task | Model | Effort | Result |
+|---|---|---|---|
+| Check Resend's API and the memo model before planning | **no subagent**: raw docs + one probe call | — | Found Resend's test inbox, so email can be verified without reaching a person; `gemini-3.8-flash` still failing (503/504). |
+| Memo contract, builder, writer + guards, SQLite store, email, endpoints, eval targets, README | **Opus 5.5** (main session) | session default | The facts-first memo and its guards are the product's promise; they stayed with the expensive model. |
+| Memo screen + polish pass (risk-pill popover, headings, 900 px overflow) | **Sonnet 5.5** subagent | medium | 96.1k tokens, ~2.4 min, 77 frontend tests. |
+| Backend tests for M5 | **Sonnet 5.5** subagent | medium | 94.1k tokens, ~2 min, 51 tests (memo builder, writer guards, store, email with a mocked HTTP layer, API, session). No bugs found this time. |
+| First draft of the demo video script | **Haiku 5.5** subagent | low | 63.3k tokens, 27 s. A cheap first draft from the milestone write-ups; I fixed the button names and numbers. |
+| Memo summary wording | **Gemini**, hedged 3.8-flash + flash-lite | thinking `low` / `minimal` | ~0.8 s on real calls. The guards caught "official register" on the first run. |
+
+**What M5 showed:** my own configuration was a hidden failure mode. `gemini-3.8-flash`'s 400 on the first memo was the thinking level I sent, not an outage, so the client now picks the level per model. Reading the error message rather than the error type (added in M4) is what made that visible in seconds.
+
 ### Habits that save tokens (Used)
 - **Complete briefs for subagents.** A cold subagent re-reads context, so each brief names the files, the commands that must pass, and the exact UI copy. That saves the back-and-forth.
 - **Background, not blocking.** Research and scaffolding ran while the main session kept working.
@@ -111,7 +124,7 @@ My coding agent is **Claude Code** (desktop app). I don't run every task on the 
 | Voices for the scripted test calls (dev time) | `gemini-3.8-flash-tts`, macOS `say` as fallback | one request per turn, 3 voices, cached per line, 75 s cap + retries | Natural voices for a realistic demo and transcription test. **On 2026-10-20 the service stalled after 12 of 42 lines**, so the committed WAVs use the macOS fallback; one command re-voices them when TTS responds | Partly used (M2) |
 | Pressure-tactic detection | `all-MiniLM-L6-v2` embeddings + logistic regression (local) + rules | thresholds tuned for precision on training data | ~9 ms per line, offline, no quota; precision 0.84 / recall 0.85 on held-out lines | **Built** (M4) |
 | Tactic baseline for the eval | Gemini zero-shot, hedged flash-lite | structured output, one line at a time, cached | The honest comparison. Answer: prompting is *more accurate* here (F1 0.92), but ~70× slower and quota-bound | **Used** (M4) |
-| Decision memo after hang-up | `gemini-3.8-flash` | thinking `medium` | One call per session. Quality matters more than speed, but it only explains facts already checked | Planned (M5) |
+| Decision memo after hang-up | **no model** for the content (built from facts); **Gemini, hedged** (3.8-flash + flash-lite) words the summary | number + word guards, template fallback, 20 s budget, written after hang-up | Ready about 1 s after hang-up on real calls; nothing in it is generated without a source | **Built** (M5) |
 
 Model IDs live in `backend/app/config.py` and can be overridden from `.env` (`TENOR_MODEL_FAST`, `TENOR_MODEL_RESEARCH`, `TENOR_MODEL_MEMO`, `TENOR_LLM_TIMEOUT_S`). **Built** in M0.
 

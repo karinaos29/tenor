@@ -1,7 +1,7 @@
 {
-  "run_id": "ed8c53c3",
-  "created_at": "2026-10-21T00:13:09.258615Z",
-  "commit": "252a19e",
+  "run_id": "9719aac5",
+  "created_at": "2026-10-21T08:39:56.667721Z",
+  "commit": "24f13b1",
   "note": "80 held-out lines; 12 test calls (5 manipulative, 7 honest); audio replays included; live Finnhub",
   "data": "Synthetic benchmark. Training lines were written by Claude Sonnet; the held-out test lines and 9 of the 12 test calls by Claude Haiku from a separate brief, without access to the training set; 3 calls by Claude Opus. All calls are scripted and voiced by text-to-speech, not real phone calls. One round of feedback: after the first run, 130 training lines were added for the two kinds of honest speech the classifier over-flagged (short small talk, same-topic opposites); test lines were not changed, and thresholds are set on training data only.",
   "targets": [
@@ -38,7 +38,7 @@
     {
       "label": "Claim spoken → verdict (median)",
       "target": "≤ 2 s",
-      "measured": "0.70 s (n=15)",
+      "measured": "0.71 s (n=15)",
       "met": true
     },
     {
@@ -50,8 +50,14 @@
     {
       "label": "Memo ready after hang-up",
       "target": "≤ 60 s",
-      "measured": "arrives in M5",
-      "met": null
+      "measured": "0.9 s median, p95 9.1 s (n=12, real calls)",
+      "met": true
+    },
+    {
+      "label": "Memos with no buy / sell / safe / scam wording",
+      "target": "12 of 12",
+      "measured": "12 of 12 (+ 12 of 12 with Gemini summaries)",
+      "met": true
     }
   ],
   "detectors": [
@@ -226,7 +232,7 @@
         "f1": 0.876,
         "support": 45
       },
-      "latency_ms_median": 8.71,
+      "latency_ms_median": 9.0,
       "note": "all-MiniLM-L6-v2 embeddings + logistic regression, local CPU"
     },
     {
@@ -313,7 +319,7 @@
         "f1": 0.901,
         "support": 45
       },
-      "latency_ms_median": 8.81,
+      "latency_ms_median": 9.1,
       "note": "What runs live during a call"
     },
     {
@@ -417,7 +423,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 2
+      "max_visible_suggestions": 2,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_cd_deadline",
@@ -431,7 +439,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_insurance_review",
@@ -445,7 +455,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 2
+      "max_visible_suggestions": 2,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_insured_savings",
@@ -459,7 +471,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_many_customers",
@@ -473,7 +487,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 3
+      "max_visible_suggestions": 3,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_pension_checkin",
@@ -487,7 +503,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": null,
-      "max_visible_suggestions": 1
+      "max_visible_suggestions": 1,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "honest_voo",
@@ -501,7 +519,9 @@
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": null,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "scam_crypto_recovery",
@@ -515,7 +535,9 @@
       "false_claims_caught": 1,
       "tactic_recall": 0.4,
       "tactic_precision": 0.667,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "scam_gold",
@@ -529,7 +551,9 @@
       "false_claims_caught": 1,
       "tactic_recall": 0.5,
       "tactic_precision": 1.0,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "scam_kstl",
@@ -543,7 +567,9 @@
       "false_claims_caught": 2,
       "tactic_recall": null,
       "tactic_precision": null,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "scam_pension_transfer",
@@ -557,7 +583,9 @@
       "false_claims_caught": 1,
       "tactic_recall": 0.818,
       "tactic_precision": 0.75,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     },
     {
       "name": "scam_silverline",
@@ -571,7 +599,9 @@
       "false_claims_caught": 2,
       "tactic_recall": 1.0,
       "tactic_precision": 0.714,
-      "max_visible_suggestions": 4
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0
     }
   ],
   "latency": [
@@ -579,79 +609,91 @@
       "stage": "check.claim",
       "n": 15,
       "median_ms": 0.0,
-      "p95_ms": 0.1
+      "p95_ms": 0.3
     },
     {
       "stage": "claim.flag_e2e",
       "n": 15,
-      "median_ms": 702.0,
-      "p95_ms": 2253.8
+      "median_ms": 714.9,
+      "p95_ms": 2211.5
     },
     {
       "stage": "detector",
       "n": 311,
       "median_ms": 19.8,
-      "p95_ms": 29.9
+      "p95_ms": 37.0
     },
     {
       "stage": "extractor.rules",
-      "n": 380,
-      "median_ms": 0.7,
+      "n": 381,
+      "median_ms": 0.6,
       "p95_ms": 1.2
     },
     {
       "stage": "labeler",
-      "n": 593,
+      "n": 601,
       "median_ms": 0.2,
       "p95_ms": 0.5
     },
     {
       "stage": "llm.extract",
-      "n": 20,
-      "median_ms": 2137.1,
-      "p95_ms": 4363.7
+      "n": 14,
+      "median_ms": 902.8,
+      "p95_ms": 1051.8
+    },
+    {
+      "stage": "llm.memo",
+      "n": 12,
+      "median_ms": 856.3,
+      "p95_ms": 945.8
     },
     {
       "stage": "llm.wording",
-      "n": 15,
-      "median_ms": 1016.4,
-      "p95_ms": 3824.7
+      "n": 14,
+      "median_ms": 754.5,
+      "p95_ms": 893.1
+    },
+    {
+      "stage": "memo.write",
+      "n": 12,
+      "median_ms": 870.2,
+      "p95_ms": 9071.2
     },
     {
       "stage": "offer",
-      "n": 42,
+      "n": 45,
       "median_ms": 0.1,
-      "p95_ms": 0.2
+      "p95_ms": 0.3
     },
     {
       "stage": "research.prefetch",
-      "n": 19,
-      "median_ms": 0.0,
-      "p95_ms": 287.5
+      "n": 20,
+      "median_ms": 0.1,
+      "p95_ms": 244.1
     },
     {
       "stage": "research.wording",
-      "n": 15,
-      "median_ms": 1028.0,
-      "p95_ms": 3837.6
+      "n": 14,
+      "median_ms": 758.2,
+      "p95_ms": 896.3
     },
     {
       "stage": "stt.connect",
       "n": 12,
-      "median_ms": 566.8,
-      "p95_ms": 705.0
+      "median_ms": 603.5,
+      "p95_ms": 820.1
     },
     {
       "stage": "stt.final_lag",
-      "n": 391,
-      "median_ms": 692.7,
-      "p95_ms": 1999.6
+      "n": 387,
+      "median_ms": 672.0,
+      "p95_ms": 1926.5
     },
     {
       "stage": "stt.partial_lag",
-      "n": 1089,
-      "median_ms": 259.8,
-      "p95_ms": 583.7
+      "n": 1079,
+      "median_ms": 251.6,
+      "p95_ms": 585.9
     }
   ],
   "audio": true

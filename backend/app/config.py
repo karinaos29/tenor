@@ -29,7 +29,11 @@ class Settings(BaseSettings):
     tenor_llm_timeout_s: float = 8.0
     tenor_wording_timeout_s: float = 6.0
     finnhub_timeout_s: float = 3.0
-    tenor_model_memo: str = "gemini-3.8-flash"  # one memo per call, after hang-up
+    # The memo summary is hedged too: 3.8-flash returned 503/504 for two days (2026-10-20/21).
+    tenor_model_memo: str = "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite"
+    tenor_memo_timeout_s: float = 20.0
+    memo_email_from: str = "Tenor <onboarding@resend.dev>"  # Resend's sandbox sender
+    memo_email_to: str = ""  # optional: prefills the recipient on the memo screen
 
 
 @lru_cache

@@ -57,6 +57,8 @@ from pipeline.events import (  # noqa: E402
     UtterancesClosed,
     utc_now,
 )
+from memo.writer import FORBIDDEN, MemoWriter  # noqa: E402
+from pipeline.events import CallEnded, CallStarted  # noqa: E402
 from pipeline.extractor import EntityExtractor  # noqa: E402
 from pipeline.latency import LOG_PATH  # noqa: E402
 from pipeline.llm import fast_llm  # noqa: E402
@@ -251,6 +253,9 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
             SuggestionEngine(bus, wait_for=("checks", "research", "tactics")),
         )
     ]
+    writer = MemoWriter(bus, None, None)  # template summary: deterministic in text mode
+    writer_task = asyncio.create_task(writer.run())
+    bus.publish(CallStarted(call_id=name, source="replay", replay_id=name))
     caller_text: dict[str, str] = {}
     t = 0.0
     for i, (role, text) in enumerate(script_lines(name)):
@@ -262,6 +267,10 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
         await asyncio.sleep(0.02)
     bus.publish(UtterancesClosed())
     await asyncio.wait_for(asyncio.gather(*tasks), 60)
+    bus.publish(CallEnded(reason="replay_finished"))
+    started = time.perf_counter()
+    memo = await asyncio.wait_for(writer_task, 60)
+    memo_s = time.perf_counter() - started
     out.close()
     events = [e async for e in out]
     risk = next((e for e in reversed(events) if isinstance(e, RiskUpdated)), None)
@@ -271,7 +280,26 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
         "max_visible": max((len(e.visible) for e in events if isinstance(e, SuggestionsUpdated)), default=0),
         "risk": risk,
         "caller_text": caller_text,
+        "memo": memo,
+        "memo_s": memo_s,
     }
+
+
+def memo_ok(memo) -> bool:  # noqa: ANN001
+    """Written, and no buy / sell / safe / scam in anything Tenor itself says. Quotes of the
+    caller (pressure quotes, quoted claims) are exempt: quoting them is the point."""
+    if memo is None:
+        return False
+    own = [memo.headline, memo.summary]
+    for s in memo.sections:
+        for i in s.items:
+            if s.id == "pressure":
+                own.append(i.text)  # the detail is the caller's quote
+            elif s.id == "claims" and i.text.startswith("“"):
+                own.append(i.detail)  # the text is the caller's quote
+            else:
+                own += [i.text, i.detail]
+    return not FORBIDDEN.search(" ".join(own))
 
 
 def call_level(classifier: TacticClassifier | None, live: bool) -> list[CallResult]:
@@ -313,6 +341,7 @@ def call_level(classifier: TacticClassifier | None, live: bool) -> list[CallResu
                 name=name, kind=kind, hard_honest=bool(exp.get("hard_honest")), expected=expected,
                 risk_score=score, risk_level=level, ok=ok, false_claims_expected=len(wanted), false_claims_caught=caught,
                 tactic_recall=recall, tactic_precision=precision, max_visible_suggestions=run["max_visible"],
+                memo_ok=memo_ok(run["memo"]), memo_s=round(run["memo_s"], 2),
             )  # fmt: skip
         )
         print(f"  {name:<26} {kind:<12} risk {score:>3} {level:<8} expected {expected:<18} {'OK' if ok else 'MISS'}  false claims {caught}/{len(wanted)}")
@@ -332,6 +361,7 @@ async def run_audio(names: list[str]) -> list[str]:
     classifier = TacticClassifier.load_default()
     limit = asyncio.Semaphore(4)
     ids: list[str] = []
+    audio_memos.clear()
 
     async def noop(_event: object) -> None:
         return None
@@ -342,13 +372,20 @@ async def run_audio(names: list[str]) -> list[str]:
             session = CallSession(
                 FileSource(CALLS / f"{name}.wav"), DeepgramTranscriber(s.deepgram_api_key), noop, replay_id=name,
                 llm=fast_llm(s.gemini_api_key, s.tenor_model_fast, s.tenor_llm_timeout_s), market=market, classifier=classifier,
+                memo_llm=fast_llm(s.gemini_api_key, s.tenor_model_memo, s.tenor_memo_timeout_s), memo_timeout=s.tenor_memo_timeout_s,
             )  # fmt: skip
             ids.append(session.id)
             print(f"  replaying {name} (call {session.id}) ...")
             await session.run()
+            if session.memo_task is not None:
+                memo = await session.memo_task
+                audio_memos.append(memo_ok(memo))
 
     await asyncio.gather(*(one(n) for n in names if (CALLS / f"{n}.wav").exists()))
     return ids
+
+
+audio_memos: list[bool] = []
 
 
 def latency_table(call_ids: set[str]) -> list[StageLatency]:
@@ -366,6 +403,19 @@ def latency_table(call_ids: set[str]) -> list[StageLatency]:
 
 
 # --- report ----------------------------------------------------------------------------
+
+
+def memo_target(calls: list[CallResult], latency: list[StageLatency]) -> Target:
+    row = next((r for r in latency if r.stage == "memo.write"), None)
+    if row is not None:  # audio: real hang-up -> memo ready, Gemini summary included
+        return Target(label="Memo ready after hang-up", target="≤ 60 s",
+                      measured=f"{row.median_ms / 1000:.1f} s median, p95 {row.p95_ms / 1000:.1f} s (n={row.n}, real calls)",
+                      met=row.p95_ms <= 60_000)  # fmt: skip
+    times = [c.memo_s for c in calls if c.memo_s is not None]
+    worst = max(times) if times else None
+    return Target(label="Memo ready after hang-up", target="≤ 60 s",
+                  measured=f"{worst:.2f} s max (text mode, template summary)" if worst is not None else "not measured",
+                  met=(worst <= 60) if worst is not None else None)  # fmt: skip
 
 
 def main() -> None:
@@ -403,7 +453,12 @@ def main() -> None:
         Target(label="Scripted false claims caught", target="all", measured=f"{fc_got} of {fc_exp}", met=fc_got == fc_exp),
         Target(label="Claim spoken → verdict (median)", target="≤ 2 s", measured=f"{e2e.median_ms / 1000:.2f} s (n={e2e.n})" if e2e else "not measured (run with --audio)", met=(e2e.median_ms <= 2000) if e2e else None),
         Target(label="Suggestions visible at once", target="≤ 4", measured=str(max(c.max_visible_suggestions for c in calls)), met=max(c.max_visible_suggestions for c in calls) <= 4),
-        Target(label="Memo ready after hang-up", target="≤ 60 s", measured="arrives in M5", met=None),
+        memo_target(calls, latency),
+        Target(
+            label="Memos with no buy / sell / safe / scam wording", target=f"{len(calls)} of {len(calls)}",
+            measured=f"{sum(bool(c.memo_ok) for c in calls)} of {len(calls)}" + (f" (+ {sum(audio_memos)} of {len(audio_memos)} with Gemini summaries)" if audio_memos else ""),
+            met=all(c.memo_ok for c in calls) and all(audio_memos),
+        ),  # fmt: skip
     ]
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
     report = EvalReport(

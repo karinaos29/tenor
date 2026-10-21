@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { EvalScreen } from "./components/EvalScreen";
 import { LiveScreen } from "./components/LiveScreen";
+import { MemoScreen } from "./components/MemoScreen";
 import { StartScreen } from "./components/StartScreen";
 import { releaseMicrophone } from "./lib/audio/mic";
 import { startHealthSocket } from "./lib/healthSocket";
@@ -11,5 +12,5 @@ export function App() {
   const screen = useAppStore((s) => s.screen);
   useEffect(() => startHealthSocket(), []);
   useEffect(() => releaseMicrophone, []);
-  return <MotionConfig reducedMotion="user">{screen === "live" ? <LiveScreen /> : screen === "eval" ? <EvalScreen /> : <StartScreen />}</MotionConfig>;
+  return <MotionConfig reducedMotion="user">{screen === "live" ? <LiveScreen /> : screen === "eval" ? <EvalScreen /> : screen === "memo" ? <MemoScreen /> : <StartScreen />}</MotionConfig>;
 }

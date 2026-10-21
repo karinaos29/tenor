@@ -43,7 +43,7 @@ TACTICS: tuple[Tactic, ...] = (
         "“Everyone's doing it”",
         "Uses what other people supposedly do or buy to push the listener: 'most of my clients take 10,000', 'thousands have already joined'.",
         "Neutral information without a push, e.g. 'some customers start with a monthly amount, then adjust'.",
-        "What other people buy doesn't matter to me. I decide for myself.",
+        "What other people do doesn't matter to me. I decide for myself.",
         62,
     ),
     Tactic(

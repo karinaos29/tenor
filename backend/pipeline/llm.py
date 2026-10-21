@@ -137,6 +137,13 @@ class HedgedLlm:
             await asyncio.gather(*tasks, return_exceptions=True)
 
 
+def thinking_for(model: str) -> Thinking:
+    """Flash-Lite models accept "minimal"; others (e.g. gemini-3.8-flash) start at "low" and
+    reject "minimal" with HTTP 400 (seen 2026-10-21)."""
+    return "minimal" if "flash-lite" in model else "low"
+
+
 def fast_llm(api_key: str, models: str, timeout_s: float) -> HedgedLlm:
-    """Build the hedged client from a comma-separated model list (TENOR_MODEL_FAST)."""
-    return HedgedLlm([LlmClient(api_key, m.strip(), timeout_s=timeout_s) for m in models.split(",") if m.strip()])
+    """Build the hedged client from a comma-separated model list (TENOR_MODEL_FAST / _MEMO)."""
+    names = [m.strip() for m in models.split(",") if m.strip()]
+    return HedgedLlm([LlmClient(api_key, m, thinking=thinking_for(m), timeout_s=timeout_s) for m in names])

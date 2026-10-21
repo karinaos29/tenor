@@ -11,12 +11,32 @@
     },
     "evalResponse": {
       "$ref": "#/$defs/EvalResponse"
+    },
+    "callMemoResponse": {
+      "$ref": "#/$defs/CallMemoResponse"
+    },
+    "emailRequest": {
+      "$ref": "#/$defs/EmailRequest"
+    },
+    "emailResult": {
+      "$ref": "#/$defs/EmailResult"
+    },
+    "emailDefaults": {
+      "$ref": "#/$defs/EmailDefaults"
+    },
+    "savedCallList": {
+      "$ref": "#/$defs/SavedCallList"
     }
   },
   "required": [
     "event",
     "replayList",
-    "evalResponse"
+    "evalResponse",
+    "callMemoResponse",
+    "emailRequest",
+    "emailResult",
+    "emailDefaults",
+    "savedCallList"
   ],
   "$defs": {
     "CallEnded": {
@@ -1455,6 +1475,30 @@
         },
         "max_visible_suggestions": {
           "type": "integer"
+        },
+        "memo_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Memo written, with no buy/sell/safe/scam wording"
+        },
+        "memo_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Hang-up to memo ready, seconds"
         }
       },
       "required": [
@@ -1469,7 +1513,9 @@
         "false_claims_caught",
         "tactic_recall",
         "tactic_precision",
-        "max_visible_suggestions"
+        "max_visible_suggestions",
+        "memo_ok",
+        "memo_s"
       ],
       "title": "CallResult",
       "type": "object"
@@ -1676,6 +1722,357 @@
         "report"
       ],
       "title": "EvalResponse",
+      "type": "object"
+    },
+    "Memo": {
+      "description": "Built from the call's facts; the LLM may only word the summary (under guards).",
+      "properties": {
+        "call_id": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "duration_s": {
+          "type": "number"
+        },
+        "source": {
+          "enum": [
+            "mic",
+            "replay"
+          ],
+          "type": "string"
+        },
+        "replay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_score": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_level": {
+          "anyOf": [
+            {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headline": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "summary_wording": {
+          "enum": [
+            "template",
+            "gemini"
+          ],
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/MemoSection"
+          },
+          "type": "array"
+        },
+        "transcript": {
+          "items": {
+            "$ref": "#/$defs/Utterance"
+          },
+          "type": "array"
+        },
+        "note": {
+          "description": "What the memo is and isn't (Tenor never says buy or sell)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "call_id",
+        "created_at",
+        "started_at",
+        "duration_s",
+        "source",
+        "replay_id",
+        "risk_score",
+        "risk_level",
+        "headline",
+        "summary",
+        "summary_wording",
+        "sections",
+        "transcript",
+        "note"
+      ],
+      "title": "Memo",
+      "type": "object"
+    },
+    "MemoItem": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "type": "string"
+        },
+        "t": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Moment in the call (seconds), for 'jump to transcript'"
+        },
+        "source": {
+          "default": "",
+          "type": "string"
+        },
+        "tone": {
+          "default": "neutral",
+          "enum": [
+            "neutral",
+            "ok",
+            "warn",
+            "danger"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "detail",
+        "t",
+        "source",
+        "tone"
+      ],
+      "title": "MemoItem",
+      "type": "object"
+    },
+    "MemoSection": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MemoItem"
+          },
+          "type": "array"
+        },
+        "empty": {
+          "default": "",
+          "description": "Shown when there are no items",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "items",
+        "empty"
+      ],
+      "title": "MemoSection",
+      "type": "object"
+    },
+    "CallMemoResponse": {
+      "properties": {
+        "status": {
+          "enum": [
+            "live",
+            "writing",
+            "ready",
+            "failed",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "memo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Memo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "memo"
+      ],
+      "title": "CallMemoResponse",
+      "type": "object"
+    },
+    "EmailRequest": {
+      "properties": {
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "to"
+      ],
+      "title": "EmailRequest",
+      "type": "object"
+    },
+    "EmailResult": {
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "ok",
+        "message"
+      ],
+      "title": "EmailResult",
+      "type": "object"
+    },
+    "EmailDefaults": {
+      "properties": {
+        "configured": {
+          "description": "A Resend key is set",
+          "type": "boolean"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Prefilled recipient (MEMO_EMAIL_TO), if any"
+        }
+      },
+      "required": [
+        "configured",
+        "to"
+      ],
+      "title": "EmailDefaults",
+      "type": "object"
+    },
+    "SavedCall": {
+      "properties": {
+        "call_id": {
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "replay_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "risk_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headline": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "call_id",
+        "started_at",
+        "source",
+        "replay_id",
+        "status",
+        "risk_level",
+        "headline"
+      ],
+      "title": "SavedCall",
+      "type": "object"
+    },
+    "SavedCallList": {
+      "properties": {
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/SavedCall"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "calls"
+      ],
+      "title": "SavedCallList",
       "type": "object"
     }
   }

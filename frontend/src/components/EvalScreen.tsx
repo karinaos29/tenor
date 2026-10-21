@@ -18,6 +18,7 @@ async function fetchEval(): Promise<EvalResponse> {
   }
 }
 
+const NO_TACTICS = "No tactics are labeled in this call, so there's nothing to recall; see the risk column";
 const f2 = (n: number) => n.toFixed(2);
 
 function Table({ caption, head, children }: { caption: string; head: ReactNode; children: ReactNode }) {
@@ -146,9 +147,14 @@ function Calls({ calls }: { calls: CallResult[] }) {
             <td><span className="numbers">{c.risk_score}</span> · {c.risk_level}</td>
             <td style={{ color: c.ok ? "var(--ok)" : "var(--danger)", fontWeight: 600 }}>{c.ok ? "As expected" : "Not as expected"}</td>
             <td className="numbers">{c.false_claims_caught} of {c.false_claims_expected}</td>
-            <td className="numbers">
-              {c.tactic_precision !== null && c.tactic_recall !== null ? `${f2(c.tactic_precision)} / ${f2(c.tactic_recall)}` : "—"}
-            </td>
+            {c.tactic_precision !== null && c.tactic_recall !== null ? (
+              <td className="numbers">{`${f2(c.tactic_precision)} / ${f2(c.tactic_recall)}`}</td>
+            ) : (
+              <td className="numbers" title={NO_TACTICS}>
+                <span aria-hidden="true">—</span>
+                <span className="sr-only">{NO_TACTICS}</span>
+              </td>
+            )}
           </tr>
         ))}
       </Table>

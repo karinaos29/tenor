@@ -4,7 +4,7 @@ import { MicCheck } from "./MicCheck";
 import { ServiceList } from "./ServiceList";
 import { startCall } from "../lib/callSession";
 import { replayReason, startReason } from "../lib/startGate";
-import type { ReplayInfo, ReplayList } from "../lib/events.gen";
+import type { ReplayInfo, ReplayList, SavedCall, SavedCallList } from "../lib/events.gen";
 import { useAppStore } from "../stores/app";
 import { useHealthStore } from "../stores/health";
 import { useMicStore } from "../stores/mic";
@@ -25,7 +25,25 @@ async function fetchReplays(): Promise<ReplayInfo[]> {
   }
 }
 
+async function fetchLastReadyCall(): Promise<SavedCall | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch("/api/calls", { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as SavedCallList;
+    const ready = (Array.isArray(body.calls) ? body.calls : []).filter((c) => c.status === "ready");
+    ready.sort((a, b) => b.started_at.localeCompare(a.started_at));
+    return ready[0] ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function StartScreen() {
+  const [lastCall, setLastCall] = useState<SavedCall | null>(null);
   const [consent, setConsent] = useState(false);
   const [replays, setReplays] = useState<ReplayInfo[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -38,6 +56,7 @@ export function StartScreen() {
     if (status !== "connected") return;
     let cancelled = false;
     void fetchReplays().then((r) => !cancelled && setReplays(r));
+    void fetchLastReadyCall().then((c) => !cancelled && setLastCall(c));
     return () => {
       cancelled = true;
     };
@@ -107,6 +126,11 @@ export function StartScreen() {
           <ServiceList />
         </motion.section>
         <p className="start__reviewers">
+          {lastCall && (
+            <button className="linkbtn" onClick={() => useAppStore.getState().openMemo(lastCall.call_id)}>
+              Read your last memo
+            </button>
+          )}
           <button className="linkbtn" onClick={() => useAppStore.getState().setScreen("eval")}>
             For reviewers: how Tenor is measured
           </button>

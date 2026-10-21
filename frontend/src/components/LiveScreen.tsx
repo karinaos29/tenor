@@ -7,6 +7,7 @@ import "./LiveScreen.css";
 export function LiveScreen() {
   return (
     <motion.main className="live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+      <h1 className="sr-only">Live call</h1>
       <CallStrip />
       <div className="live__grid">
         <Transcript />

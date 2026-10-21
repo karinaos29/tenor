@@ -15,7 +15,7 @@
   align-items: center;
 }
 @media (min-width: 900px) {
-  .start__inner { grid-template-columns: 1.3fr 1fr; gap: 56px; }
+  .start__inner { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 56px; }
 }
 .hero__eyebrow {
   margin: 0 0 16px;
@@ -67,3 +67,5 @@
 .start__reviewers { margin: 24px 0 0; text-align: center; grid-column: 1 / -1; }
 .linkbtn { background: none; border: 0; padding: 4px 2px; color: var(--muted); font-size: 14px; text-decoration: underline; cursor: pointer; }
 .linkbtn:hover { color: var(--ink); }
+
+.start__reviewers { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }

@@ -11,7 +11,8 @@
 End of call is a chain, so nothing is cut off: transcript.closed -> labeler ->
 utterances.closed -> extractor (waits for pending LLM calls) -> entities.closed ->
 offer tracker, and checker + research drain -> checks.closed / research.closed ->
-suggestion engine's final state -> call.ended.
+suggestion engine's final state -> call.ended -> memo writer (in the background: the memo is
+saved to SQLite; the browser polls GET /api/calls/{id}/memo, so hanging up never waits on an LLM).
 
 The session owns the bus and the task lifecycle; components only see the bus.
 Live mic and replay run through exactly this code.
@@ -58,6 +59,8 @@ from pipeline.research import ResearchAgent
 from pipeline.speakers import SpeakerLabeler
 from pipeline.suggestions import SuggestionEngine
 from pipeline.tactics import PressureDetector
+from memo.store import MemoStore
+from memo.writer import MemoWriter
 from detector.classifier import TacticClassifier
 from providers.catalog import Catalog, default_catalog
 from providers.market import FixtureProvider, MarketDataProvider, RoutedMarketData
@@ -109,6 +112,9 @@ class CallSession:
         register: FixtureRegister | None = None,
         wording_timeout: float = 6.0,
         classifier: TacticClassifier | None = None,
+        store: MemoStore | None = None,
+        memo_llm: LlmClient | HedgedLlm | None = None,
+        memo_timeout: float = 20.0,
         forward: tuple[type[Event], ...] = UI_EVENTS,
     ) -> None:
         self.id = uuid.uuid4().hex[:8]
@@ -123,6 +129,10 @@ class CallSession:
         self.register = register or FixtureRegister(self.catalog)
         self.wording_timeout = wording_timeout
         self.classifier = classifier  # None = tactic rules only
+        self.store = store
+        self.memo_llm = memo_llm
+        self.memo_timeout = memo_timeout
+        self.memo_task: asyncio.Task | None = None  # finishes after the call; never awaited by run()
         self.forward = forward
         self.bus = EventBus()
         self._stopped_by_user = False
@@ -157,6 +167,8 @@ class CallSession:
             ).run()
         )  # fmt: skip
         tactics = asyncio.create_task(PressureDetector(self.bus, self.classifier, call_id=self.id, source=kind).run())
+        # The memo writer collects the whole call and writes after call.ended, in the background.
+        self.memo_task = asyncio.create_task(MemoWriter(self.bus, self.store, self.memo_llm, timeout_s=self.memo_timeout).run())
         suggestions = asyncio.create_task(
             SuggestionEngine(self.bus, call_id=self.id, wait_for=("checks", "research", "tactics")).run()
         )

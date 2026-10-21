@@ -23,3 +23,4 @@ backend/logs/
 .idea/
 .vscode/
 backend/fixtures/calls/.tts_cache/
+backend/data/

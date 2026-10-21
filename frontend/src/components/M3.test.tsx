@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { CallStrip } from "./CallStrip";
 import { ClaimsCard } from "./ClaimsCard";
 import { Suggestions } from "./Suggestions";
@@ -98,7 +98,8 @@ describe("risk pill", () => {
     send({ ts, type: "risk.updated", score: 70, level, reasons: [{ label: "A claim doesn't match data", points: 30 }] });
     const pill = screen.getByText(new RegExp(`· ${label}$`));
     expect(pill).toBeInTheDocument();
-    expect(pill.getAttribute("title")).toContain("+30 A claim doesn't match data");
+    fireEvent.click(pill);
+    expect(screen.getByText("A claim doesn't match data")).toBeInTheDocument();
   });
 });
 

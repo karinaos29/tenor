@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { endCall, newCall } from "../lib/callSession";
 import { formatClock } from "../lib/callState";
+import { useAppStore } from "../stores/app";
 import { useCallStore } from "../stores/call";
 import { RiskPill } from "./RiskPill";
 
 export function CallStrip() {
-  const { phase, source, replayTitle, startedAtMs, endedAtMs, offer } = useCallStore();
+  const { phase, source, replayTitle, startedAtMs, endedAtMs, offer, callId } = useCallStore();
   const who = [offer?.caller_name?.display, offer?.firm?.display].filter(Boolean).join(" · ");
   const [now, setNow] = useState(() => Date.now());
 
@@ -46,7 +47,12 @@ export function CallStrip() {
 
       <div className="strip__actions">
         <RiskPill />
-        {done ? (
+        {phase === "ended" && callId ? (
+          <>
+            <button className="btn" onClick={() => useAppStore.getState().openMemo(callId)}>Read your memo</button>
+            <button className="btn btn--secondary" onClick={newCall}>New call</button>
+          </>
+        ) : done ? (
           <button className="btn" onClick={newCall}>New call</button>
         ) : (
           <button className="btn btn--secondary" onClick={endCall}>End call</button>

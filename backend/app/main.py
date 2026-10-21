@@ -16,6 +16,11 @@ from pydantic import ValidationError
 from app.config import VERSION, get_settings
 from audio.sources import AudioSource, FileSource, MicSource
 from pipeline.events import (
+    CallMemoResponse,
+    EmailDefaults,
+    EmailRequest,
+    EmailResult,
+    SavedCallList,
     EvalReport,
     EvalResponse,
     CallEnded,
@@ -35,6 +40,8 @@ from pipeline.llm import fast_llm
 from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
 from detector.classifier import TacticClassifier
+from memo.email import send_memo
+from memo.store import MemoStore
 from providers.catalog import default_catalog
 from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
@@ -60,6 +67,9 @@ app.state.market_factory = lambda: RoutedMarketData(
     FixtureProvider(default_catalog()),
     FinnhubProvider(get_settings().finnhub_api_key, timeout_s=get_settings().finnhub_timeout_s),
 )
+app.state.memo_llm_factory = lambda: fast_llm(get_settings().gemini_api_key, get_settings().tenor_model_memo, get_settings().tenor_memo_timeout_s)
+app.state.store = MemoStore()
+app.state.background: set[asyncio.Task] = set()  # memo writers outlive their call socket
 app.state.replay_dir = Path(__file__).resolve().parents[1] / "fixtures" / "calls"
 
 REPLAY_ID = re.compile(r"^[a-z0-9_]+$")
@@ -121,6 +131,35 @@ def eval_report() -> EvalResponse:
     except ValueError:
         log.warning("eval results at %s are unreadable", path)
         return EvalResponse(report=None)
+
+
+# --- Calls and memos -------------------------------------------------------------------
+
+
+@app.get("/api/calls")
+def saved_calls() -> SavedCallList:
+    return SavedCallList(calls=app.state.store.recent())
+
+
+@app.get("/api/calls/{call_id}/memo")
+def call_memo(call_id: str) -> CallMemoResponse:
+    status, memo = app.state.store.get(call_id)
+    return CallMemoResponse(status=status if status in ("live", "writing", "ready", "failed") else "unknown", memo=memo)  # type: ignore[arg-type]
+
+
+@app.get("/api/email")
+def email_defaults() -> EmailDefaults:
+    s = get_settings()
+    return EmailDefaults(configured=bool(s.resend_api_key), to=s.memo_email_to or None)
+
+
+@app.post("/api/calls/{call_id}/email")
+async def email_memo(call_id: str, request: EmailRequest) -> EmailResult:
+    _, memo = app.state.store.get(call_id)
+    if memo is None:
+        return EmailResult(ok=False, message="The memo isn't ready yet.")
+    s = get_settings()
+    return await send_memo(memo, request.to.strip(), api_key=s.resend_api_key, sender=s.memo_email_from)
 
 
 # --- Replays -------------------------------------------------------------------------
@@ -185,6 +224,9 @@ async def call_socket(ws: WebSocket) -> None:
         market=app.state.market_factory(),
         wording_timeout=get_settings().tenor_wording_timeout_s,
         classifier=app.state.classifier,
+        store=app.state.store,
+        memo_llm=app.state.memo_llm_factory(),
+        memo_timeout=get_settings().tenor_memo_timeout_s,
     )
     log.info("call %s started (%s)", session.id, first.source)
     run = asyncio.create_task(session.run())
@@ -192,6 +234,9 @@ async def call_socket(ws: WebSocket) -> None:
     try:
         await run
     finally:
+        if session.memo_task is not None:
+            app.state.background.add(session.memo_task)
+            session.memo_task.add_done_callback(app.state.background.discard)
         receive.cancel()
         await asyncio.gather(receive, return_exceptions=True)
         log.info("call %s ended", session.id)

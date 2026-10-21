@@ -36,6 +36,7 @@ from pipeline.llm import fast_llm
 from pipeline.session import UI_EVENTS, CallSession
 from pipeline.transcriber import DeepgramTranscriber
 from detector.classifier import TacticClassifier
+from memo.store import MemoStore
 from providers.catalog import default_catalog
 from providers.market import FinnhubProvider, FixtureProvider, RoutedMarketData
 
@@ -121,10 +122,16 @@ async def main(path: Path) -> None:
         ),
         wording_timeout=settings.tenor_wording_timeout_s,
         classifier=TacticClassifier.load_default(),
+        store=MemoStore(),
+        memo_llm=fast_llm(settings.gemini_api_key, settings.tenor_model_memo, settings.tenor_memo_timeout_s),
         forward=(*UI_EVENTS, ClaimExtracted),
     )
     print(f"Replaying {path.name} ({source.duration_s:.1f} s), call {session.id}")
     await session.run()
+    memo = await session.memo_task if session.memo_task else None
+    if memo is not None:
+        print(f"\nMemo [{memo.summary_wording}]: {memo.headline}\n  {memo.summary}")
+        print(f"  saved: GET /api/calls/{memo.call_id}/memo")
     if final_offer:
         print_offer(final_offer[0])
 

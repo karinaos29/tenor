@@ -28,6 +28,11 @@ export interface TenorWire {
   event: TenorEvent;
   replayList: ReplayList;
   evalResponse: EvalResponse;
+  callMemoResponse: CallMemoResponse;
+  emailRequest: EmailRequest;
+  emailResult: EmailResult;
+  emailDefaults: EmailDefaults;
+  savedCallList: SavedCallList;
 }
 /**
  * Server -> client, sent once when the health socket opens.
@@ -390,10 +395,93 @@ export interface CallResult {
   tactic_recall: number | null;
   tactic_precision: number | null;
   max_visible_suggestions: number;
+  /**
+   * Memo written, with no buy/sell/safe/scam wording
+   */
+  memo_ok: boolean | null;
+  /**
+   * Hang-up to memo ready, seconds
+   */
+  memo_s: number | null;
 }
 export interface StageLatency {
   stage: string;
   n: number;
   median_ms: number;
   p95_ms: number;
+}
+export interface CallMemoResponse {
+  status: "live" | "writing" | "ready" | "failed" | "unknown";
+  memo: Memo | null;
+}
+/**
+ * Built from the call's facts; the LLM may only word the summary (under guards).
+ */
+export interface Memo {
+  call_id: string;
+  created_at: string;
+  started_at: string;
+  duration_s: number;
+  source: "mic" | "replay";
+  replay_id: string | null;
+  risk_score: number | null;
+  risk_level: ("low" | "medium" | "high" | "critical") | null;
+  headline: string;
+  summary: string;
+  summary_wording: "template" | "gemini";
+  sections: MemoSection[];
+  transcript: Utterance[];
+  /**
+   * What the memo is and isn't (Tenor never says buy or sell)
+   */
+  note: string;
+}
+export interface MemoSection {
+  id: string;
+  title: string;
+  items: MemoItem[];
+  /**
+   * Shown when there are no items
+   */
+  empty: string;
+}
+export interface MemoItem {
+  text: string;
+  detail: string;
+  /**
+   * Moment in the call (seconds), for 'jump to transcript'
+   */
+  t: number | null;
+  source: string;
+  tone: "neutral" | "ok" | "warn" | "danger";
+}
+export interface EmailRequest {
+  to: string;
+}
+export interface EmailResult {
+  ok: boolean;
+  message: string;
+  id?: string | null;
+}
+export interface EmailDefaults {
+  /**
+   * A Resend key is set
+   */
+  configured: boolean;
+  /**
+   * Prefilled recipient (MEMO_EMAIL_TO), if any
+   */
+  to: string | null;
+}
+export interface SavedCallList {
+  calls: SavedCall[];
+}
+export interface SavedCall {
+  call_id: string;
+  started_at: string;
+  source: string;
+  replay_id: string | null;
+  status: string;
+  risk_level: string | null;
+  headline: string | null;
 }

@@ -236,3 +236,29 @@ Non-obvious choices, newest last. Format: decision, why, alternative.
 - **Decision:** (1) A claim's subject is the company named in the claim's own clause. (2) Tickers are "offered" only when introduced ("the ticker is", "a company called", "heard of") or priced; mentions like "the next Apple" are researched but don't change the offer. (3) LLM-sourced entities may fill an empty offer field but never overwrite one, and LLM "names" that are known company names are dropped. (4) When a relabel turns a "You" line into the caller's, the extractor and the pressure detector reprocess it.
 - **Why:** The replay checked "Apple … up 80%" against Bluewater's data, briefly made Apple the offer, showed "Bluewater Lithium" as the caller, and lost the caller's intro because the caller spoke first. Text-based tests can't produce these; real transcripts can.
 - **Alternative:** An LLM to resolve claim subjects. Slower, and the clause rule is explainable.
+
+---
+
+### 2026-10-21 · M5 · The memo is built from facts; Gemini only words the summary, under guards
+- **Decision:** `memo/builder.py` builds every section deterministically from the call record (offer + history, checked claims, register research, tactic flags, "say this" lines, risk reasons), each item with its moment in the call and its source. Gemini writes only the 3–4 sentence summary. It's used only if every number in it appears in the facts and it contains none of buy / sell / safe / scam / official; otherwise the template summary stays.
+- **Why:** The rule is "the LLM extracts and explains; it never decides". A memo that invents a number or sounds like advice would break the product's promise. On the first real run, Gemini's summary called the test register "official", now caught by the word guard.
+- **Alternative:** The LLM writes the whole memo. Better prose, but nothing to check it against.
+
+### 2026-10-21 · M5 · Hang-up never waits for the memo
+- **Decision:** `call.ended` goes out as before. The memo writer runs in the background, saves to SQLite (`backend/data/tenor.sqlite`), and the browser polls `GET /api/calls/{id}/memo`.
+- **Why:** The memo involves an LLM call, and Gemini latency ranged from under 1 s to 30 s in this project. The UI shows "Writing your memo…" instead of a frozen call screen. Measured: ready about 1 s after hang-up on real calls.
+- **Alternative:** Keep the socket open until the memo arrives. That couples the call lifecycle to an LLM.
+
+### 2026-10-21 · M5 · Hedged memo model, with the right thinking level per model
+- **Decision:** `TENOR_MODEL_MEMO="gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite"`, hedged. Flash-Lite models get thinking `minimal`, others `low`.
+- **Why:** 3.8-flash returned 503/504 on two days running, so a single memo model would often time out. Its 400 error on the first memo run was my configuration, not an outage: it rejects `minimal`.
+- **Alternative:** 3.8-flash alone with a long timeout. Slower, and it fails when the model is down.
+
+### 2026-10-21 · M5 · Email via Resend, user-initiated only
+- **Decision:** The memo screen has an explicit **Send** button. `POST /api/calls/{id}/email` sends plain HTML + text (no tracking, no images) from Resend's sandbox sender, with an `Idempotency-Key` per call + recipient, a 10 s timeout, and a plain-words fallback ("You can still read or print the memo here"). Nothing is ever sent automatically.
+- **Why:** The architecture says the demo must not depend on an inbox, and sending a message is the user's decision. The idempotency key makes a double click harmless.
+- **Alternative:** Auto-email on hang-up. Surprising, and it sends data out without being asked.
+
+### 2026-10-21 · M5 · One suggested reply reworded
+- **Decision:** The "everyone's doing it" reply is now "What other people **do** doesn't matter to me" (was "buy").
+- **Why:** The new memo check (no buy / sell / safe / scam in anything Tenor says) flagged it. It wasn't advice, but a rule that's easy to check is better than one with exceptions. Quotes of the caller are exempt, since quoting them is the point.
