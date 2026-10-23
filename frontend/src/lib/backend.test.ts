@@ -22,4 +22,10 @@ describe("backend URLs", () => {
     expect(apiUrl("/api/calls")).toBe("https://tenor-api.up.railway.app/api/calls");
     expect(wsUrl("/ws/health")).toBe("wss://tenor-api.up.railway.app/ws/health");
   });
+
+  it("automatically prepends https:// if omitted by user", async () => {
+    const { apiUrl, wsUrl } = await load("tenor-production-bab1.up.railway.app");
+    expect(apiUrl("/api/calls")).toBe("https://tenor-production-bab1.up.railway.app/api/calls");
+    expect(wsUrl("/ws/health")).toBe("wss://tenor-production-bab1.up.railway.app/ws/health");
+  });
 });
