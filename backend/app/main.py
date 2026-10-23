@@ -98,6 +98,12 @@ def service_status() -> ServiceStatus:
     )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "ok", "service": "Tenor", "version": VERSION}
+
+
+@app.get("/health")
 @app.get("/api/health")
 def health() -> HealthStatus:
     return HealthStatus(version=VERSION, services=service_status())
