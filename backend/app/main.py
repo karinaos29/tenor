@@ -60,12 +60,12 @@ app = FastAPI(title="Tenor", version=VERSION, lifespan=lifespan)
 app.state.classifier = None  # set at startup; None = tactic rules only
 
 # Hosted, the frontend (Vercel) and this API (Railway) are different origins.
-# If ALLOWED_ORIGINS is unset, allow all origins and any Vercel domain.
-origins = get_settings().origins
+# Allow any Vercel deployment (*.vercel.app) plus any explicitly configured origins.
+origins = get_settings().origins or ["https://tenor-ai.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
-    allow_origin_regex=r"https://.*\.vercel\.app" if not origins else None,
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -118,7 +118,15 @@ def origin_allowed(ws: WebSocket) -> bool:
     if not allowed or "*" in allowed:
         return True
     origin = ws.headers.get("origin")
-    return origin is None or origin.rstrip("/") in allowed
+    if origin is None:
+        return True
+    clean = origin.rstrip("/")
+    if clean in allowed:
+        return True
+    # Allow any Vercel domain (production, preview, branch deployments)
+    if clean.endswith(".vercel.app"):
+        return True
+    return False
 
 
 @app.websocket("/ws/health")
