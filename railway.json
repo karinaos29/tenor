@@ -3,7 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "backend/Dockerfile",
-    "watchPatterns": ["/backend/**", "/eval/results/**", "/railway.json", "/.dockerignore"]
+    "watchPatterns": ["backend/**", "eval/results/**", "railway.json", ".dockerignore"]
   },
   "deploy": {
     "numReplicas": 1,
