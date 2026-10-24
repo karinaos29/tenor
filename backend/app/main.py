@@ -59,15 +59,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Tenor", version=VERSION, lifespan=lifespan)
 app.state.classifier = None  # set at startup; None = tactic rules only
 
-# Hosted, the frontend (Vercel) and this API (Railway) are different origins. Locally, Vite
-# proxies /api and /ws, so nothing needs allowing.
-if get_settings().origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=get_settings().origins,
-        allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type"],
-    )
+# Hosted, the frontend (Vercel) and this API (Railway) are different origins.
+# If ALLOWED_ORIGINS is unset, allow all origins and any Vercel domain.
+origins = get_settings().origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins if origins else ["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app" if not origins else None,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Swappable in tests (fake transcriber, temp replay folder).
 app.state.transcriber_factory = lambda: DeepgramTranscriber(get_settings().deepgram_api_key)
@@ -114,8 +115,10 @@ def origin_allowed(ws: WebSocket) -> bool:
     It stops other websites from using this backend (and its API keys) from a visitor's
     browser; it can't stop a script that fakes the header."""
     allowed = get_settings().origins
+    if not allowed or "*" in allowed:
+        return True
     origin = ws.headers.get("origin")
-    return not allowed or origin is None or origin.rstrip("/") in allowed
+    return origin is None or origin.rstrip("/") in allowed
 
 
 @app.websocket("/ws/health")

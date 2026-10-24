@@ -43,7 +43,15 @@ class Settings(BaseSettings):
 
     @property
     def origins(self) -> list[str]:
-        return [o.strip().rstrip("/") for o in self.allowed_origins.split(",") if o.strip()]
+        items: list[str] = []
+        for o in self.allowed_origins.split(","):
+            raw = o.strip().rstrip("/")
+            if not raw:
+                continue
+            items.append(raw)
+            if not raw.startswith("http://") and not raw.startswith("https://") and raw != "*":
+                items.append(f"https://{raw}")
+        return items
 
 
 @lru_cache
