@@ -93,6 +93,7 @@ class CallStart(Event):
     type: Literal["call.start"] = "call.start"
     source: AudioSourceKind
     replay_id: str | None = None
+    voice_id: str | None = Field(default=None, description="The user's voice from the mic check (POST /api/voice)")
 
 
 class CallStop(Event):
@@ -132,7 +133,7 @@ class SpeakersUpdated(Event):
 
     type: Literal["speakers.updated"] = "speakers.updated"
     user_indices: list[int]
-    reason: Literal["first_turn", "loudness", "tone", "manual"]
+    reason: Literal["first_turn", "loudness", "tone", "voice", "manual"]
     locked: bool = Field(description="True after a manual swap: automatic relabeling stops")
 
 
@@ -418,6 +419,14 @@ class MemoReady(Event):
 # --- Bus-internal events (never sent to the browser) ------------------------------
 
 
+class AudioFrame(Event):
+    """One 80 ms frame of 16 kHz PCM, for voice prints (bus-internal; live calls with a voice check only)."""
+
+    type: Literal["audio.frame"] = "audio.frame"
+    t: float
+    pcm: bytes
+
+
 class AudioLevel(Event):
     """Loudness of one 80 ms frame. `t` is the frame start, seconds from call start."""
 
@@ -668,4 +677,14 @@ class SavedCallList(BaseModel):
     calls: list[SavedCall]
 
 
-REST_MODELS: list[type[BaseModel]] = [ReplayList, EvalResponse, CallMemoResponse, EmailRequest, EmailResult, EmailDefaults, SavedCallList]
+class VoiceEnrolled(BaseModel):
+    """POST /api/voice: the user's voice print from the mic check."""
+
+    ok: bool
+    voice_id: str | None = None
+    message: str
+
+
+REST_MODELS: list[type[BaseModel]] = [
+    ReplayList, EvalResponse, CallMemoResponse, EmailRequest, EmailResult, EmailDefaults, SavedCallList, VoiceEnrolled,
+]  # fmt: skip

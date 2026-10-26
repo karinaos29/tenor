@@ -33,6 +33,7 @@ export interface TenorWire {
   emailResult: EmailResult;
   emailDefaults: EmailDefaults;
   savedCallList: SavedCallList;
+  voiceEnrolled: VoiceEnrolled;
 }
 /**
  * Server -> client, sent once when the health socket opens.
@@ -80,6 +81,10 @@ export interface CallStart {
   type: "call.start";
   source: "mic" | "replay";
   replay_id: string | null;
+  /**
+   * The user's voice from the mic check (POST /api/voice)
+   */
+  voice_id: string | null;
 }
 /**
  * Client -> server: the user hung up / pressed End call.
@@ -141,7 +146,7 @@ export interface SpeakersUpdated {
   ts: string;
   type: "speakers.updated";
   user_indices: number[];
-  reason: "first_turn" | "loudness" | "tone" | "manual";
+  reason: "first_turn" | "loudness" | "tone" | "voice" | "manual";
   /**
    * True after a manual swap: automatic relabeling stops
    */
@@ -484,4 +489,12 @@ export interface SavedCall {
   status: string;
   risk_level: string | null;
   headline: string | null;
+}
+/**
+ * POST /api/voice: the user's voice print from the mic check.
+ */
+export interface VoiceEnrolled {
+  ok: boolean;
+  voice_id?: string | null;
+  message: string;
 }

@@ -9,7 +9,7 @@ Built for Eszter, 58, a retired teacher with savings: plain words, calm by defau
 *Prototype for the Hiya Voice AI Challenge. No real telephony: microphone input and recorded-call replay, through the same pipeline.*
 
 ## What it does
-- **Live transcript** of both sides, labeled "You" and "Caller" by how each voice sounds at the mic (a phone speaker has almost no bass), with a manual "Swap speakers".
+- **Live transcript** of both sides, labeled "You" and "Caller". On a live call Tenor recognizes your voice from one sentence said at the mic check; a manual "Swap speakers" is always there.
 - **The offer card** fills in as the caller talks (who, what, price, quantity, total, deadline) and marks changes ("10,000 shares, was 5,000").
 - **Claims vs. data.** "Up 40% this quarter" is checked against market data within 0.71 s of being said. Verdicts come from arithmetic, never from an LLM.
 - **Pressure tactics** like rushing you, secrecy, or "no risk" promises are flagged per sentence by a local classifier plus rules.
@@ -67,12 +67,12 @@ This is a **synthetic benchmark**. Two different AI models wrote the training an
 - **The LLM never decides.** Verdicts, risk and the memo's facts come from data and rules. Gemini handles fuzzy extraction and wording, only under guards: quotes must match what was said, numbers must come from the facts, and no advice words.
 - **Hedged LLM calls.** Gemini's latency per model swung from under 1 s to 30 s within a day, so each request goes to several models and the first valid answer wins.
 - **Measure end to end.** Each stage took milliseconds, yet a claim took 3.8 s from spoken to flagged. Two fixes brought it to 0.71 s.
-- **Real audio beats text tests.** Replays found merged voices, misheard names, "025%" for 0.25%, and a claim checked against the wrong company. A live speakerphone test found the phone louder than the user, so the labels now go by bass first.
+- **Real audio beats text tests.** Replays found merged voices, misheard names, "025%" for 0.25%, and a claim checked against the wrong company. Live speakerphone tests showed one microphone can't tell two people apart by loudness or bass, so live calls now recognize the user's voice from a short voice check.
 
 ## Limitations
 - Synthetic benchmark; 12 scripted calls. The firm register is a **test register of fictional firms**, so real firms show "Couldn't verify".
 - Tactic recall within full calls is lower than on single lines (0.40–0.50 on two scam calls); their risk still reaches critical.
-- Telling the two voices apart on one speakerphone is the weakest link. The labeler uses each voice's bass, then its loudness, and "Swap speakers" is always there.
+- Telling the two voices apart on one speakerphone is the weakest link. Live calls use a voice check; the voice-print matching is measured on synthetic (text-to-speech) voices, and real speakerphone calls are checked by hand.
 
 ## Docs
 | | |

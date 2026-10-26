@@ -21,19 +21,30 @@ Who is "You":
 5. Manual swap: the user's "Swap speakers" button inverts the labels and locks them.
    No new splits after that: the user has said who is who.
 
+Voice mode (a live call after a voice check at the mic check): the labeler compares each
+stretch of speech with the user's voice print (pipeline/voiceprint.py) instead. Steps 1-4
+don't run: a live speakerphone test merged both people into one Deepgram speaker, and
+neither loudness nor bass separated them there. A print-matched stretch is VOICE_USER or
+VOICE_CALLER; a stretch too short or too close to call goes to Deepgram's speaker if that
+speaker has clearly been one person so far, else to the voice of the nearer loudness.
+
 Consumes: AudioLevel, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap.
 Publishes: UtterancePartial, UtteranceProgress, UtteranceFinal, SpeakersUpdated, and UtterancesClosed when done.
 """
 
+import asyncio
 import math
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from audio.sources import FRAME_SECONDS
+import numpy as np
+
+from audio.sources import FRAME_BYTES, FRAME_SECONDS, SAMPLE_RATE
 from pipeline.bus import EventBus
 from pipeline.events import (
+    AudioFrame,
     AudioLevel,
     SpeakersSwap,
     SpeakersUpdated,
@@ -48,6 +59,7 @@ from pipeline.events import (
     Word,
 )
 from pipeline.latency import record
+from pipeline.voiceprint import MIN_SECONDS as MIN_PRINT_S, VoicePrinter
 
 MIN_SPEECH_S = 2.0  # speech needed before a speaker's loudness counts as evidence
 SWITCH_DB = 3.0  # minimum loudness gap between the loudest and quietest speaker
@@ -59,6 +71,12 @@ MIN_GROUP_S = 0.3  # a split needs about a word in the smaller group ("Hello?" i
 VIRTUAL_BASE = 100  # voice number for the second person found inside diarized speaker n
 PAUSE_S = 0.3  # a silence where a turn may change (Deepgram's endpointing is 300 ms)
 LEADING_WORD_GAP_S = 0.25  # a lone first word this close to the next speaker belongs to them
+VOICE_USER, VOICE_CALLER = 300, 301  # voice numbers in voice mode
+VOICE_PAUSE_S = 0.25  # voice mode cuts finer: a reply often follows within 0.3 s
+USER_SIM = 0.84  # print this close to the user's: the user (before the caller has a print)
+CALLER_SIM = 0.78  # this far from it: someone else
+SIM_MARGIN = 0.03  # with both prints: the nearer one must win by this much
+ENROLL_WEIGHT = 2.0  # the voice check counts as two stretches when prints are averaged
 
 
 @dataclass
@@ -134,12 +152,19 @@ def smooth_speakers(words: list[Word]) -> list[Word]:
 
 
 class SpeakerLabeler:
-    def __init__(self, bus: EventBus, call_id: str = "", source: str = "") -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        call_id: str = "",
+        source: str = "",
+        printer: VoicePrinter | None = None,
+        user_print: np.ndarray | None = None,
+    ) -> None:
         self.bus = bus
         self.call_id = call_id
         self.source = source
         # Subscribe now, not in run(), so no event published before run() starts is missed.
-        self._sub = bus.subscribe(AudioLevel, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap)
+        self._sub = bus.subscribe(AudioLevel, AudioFrame, TranscriptSegment, TranscriptUtteranceEnd, TranscriptClosed, SpeakersSwap)
         self.user: set[int] = set()  # voices labeled "You"
         self.locked = False
         self._locked_known: set[int] = set()  # voices whose label the user set by hand
@@ -157,12 +182,35 @@ class SpeakerLabeler:
         self._interim: list[Word] = []
         self._utt_id: str | None = None
         self._count = 0
+        # Voice mode: only with a model and the user's print from the voice check.
+        self._printer = printer if user_print is not None else None
+        self._prints: dict[int, np.ndarray] = {}  # voice -> sum of unit prints (direction = the voice)
+        self._weights: dict[int, float] = {}
+        self._pcm = bytearray()
+        self._stretch_prints: dict[tuple[float, float], np.ndarray] = {}
+        self._votes: dict[int, dict[int, int]] = {}  # Deepgram speaker -> voice -> stretches matched
+        self._last_voice = VOICE_CALLER
+        if self._printer is not None and user_print is not None:
+            self._prints[VOICE_USER] = user_print * ENROLL_WEIGHT
+            self._weights[VOICE_USER] = ENROLL_WEIGHT
+            self._seen = [VOICE_USER, VOICE_CALLER]
+            self.user = {VOICE_USER}
+
+    @property
+    def voice_mode(self) -> bool:
+        return self._printer is not None
 
     async def run(self) -> None:
+        if self.voice_mode:
+            self._set_user({VOICE_USER}, "voice")
         async for event in self._sub:
             if isinstance(event, AudioLevel):
                 self._add_level(event)
+            elif isinstance(event, AudioFrame):
+                self._add_frame(event)
             elif isinstance(event, TranscriptSegment):
+                if event.is_final and self.voice_mode:
+                    await self._print_stretches(event.words)
                 started = time.perf_counter()
                 self._on_segment(event)
                 if event.is_final:
@@ -192,10 +240,17 @@ class SpeakerLabeler:
         self._bass[index] = 10 ** (event.bass_db / 10)
         self._band[index] = 10 ** (event.voice_db / 10)
 
+    def _add_frame(self, event: AudioFrame) -> None:
+        offset = round(event.t / FRAME_SECONDS) * FRAME_BYTES
+        if offset + len(event.pcm) > len(self._pcm):
+            self._pcm.extend(bytes(offset + len(event.pcm) - len(self._pcm)))
+        self._pcm[offset : offset + len(event.pcm)] = event.pcm
+
     def _on_segment(self, seg: TranscriptSegment) -> None:
-        for w in seg.words:
-            if w.speaker not in self._seen:
-                self._seen.append(w.speaker)
+        if not self.voice_mode:
+            for w in seg.words:
+                if w.speaker not in self._seen:
+                    self._seen.append(w.speaker)
         if seg.words and not self._decided:
             self._set_user({seg.words[0].speaker}, "first_turn")
 
@@ -205,7 +260,8 @@ class SpeakerLabeler:
             return
 
         self._interim = []
-        for w in smooth_speakers(self._route_stretches(seg.words)):
+        routed = self._route_by_voice(seg.words) if self.voice_mode else smooth_speakers(self._route_stretches(seg.words))
+        for w in routed:
             if self._words and w.speaker != self._words[-1].speaker:
                 self._finalize()  # speaker changed: close the previous turn
             self._words.append(w)
@@ -326,6 +382,8 @@ class SpeakerLabeler:
         self._loudness.setdefault(voice, _Loudness()).add(turn)
         if speaker in self._second_voice or speaker in self._second_voice.values():
             return voice  # already split; a voice splits at most once
+        if self.voice_mode:
+            return voice  # the voice print decided; nothing to split
         self._turns.setdefault(speaker, []).append(turn)
         self._stretches.setdefault(speaker, []).extend(self._measure_stretches(words))
         if not self.locked and self._split(speaker):
@@ -386,6 +444,8 @@ class SpeakerLabeler:
             self._set_user(new_user, "tone" if feature == "tone" else "loudness")
 
     def _maybe_relabel(self) -> None:
+        if self.voice_mode:
+            return  # the voice print decides; only a manual swap changes labels
         if not self.locked and self._relabel_by_tone():
             return
         measured = {s: st.db() for s, st in self._loudness.items() if st.seconds >= MIN_SPEECH_S}
@@ -440,13 +500,106 @@ class SpeakerLabeler:
             self._set_user(new_user, "tone")
         return True
 
+    # --- voice mode -------------------------------------------------------------------
+
+    def _voice_stretches(self, words: list[Word]) -> list[list[Word]]:
+        out: list[list[Word]] = []
+        for w in words:
+            if out and w.start - out[-1][-1].end < VOICE_PAUSE_S:
+                out[-1].append(w)
+            else:
+                out.append([w])
+        return out
+
+    def _samples(self, start: float, end: float) -> np.ndarray | None:
+        a, b = int(start * SAMPLE_RATE) * 2, int(end * SAMPLE_RATE) * 2
+        if b > len(self._pcm) or b - a < MIN_PRINT_S * SAMPLE_RATE * 2:
+            return None
+        return np.frombuffer(bytes(self._pcm[a:b]), dtype="<i2").astype(np.float32) / 32768
+
+    async def _print_stretches(self, words: list[Word]) -> None:
+        """Voice prints for the stretches of a final segment, computed off the event loop."""
+        jobs = []
+        for stretch in self._voice_stretches(words):
+            samples = self._samples(stretch[0].start, stretch[-1].end)
+            if samples is not None:
+                jobs.append(((stretch[0].start, stretch[-1].end), samples))
+        if not jobs or self._printer is None:
+            return
+        printer = self._printer
+        started = time.perf_counter()
+        try:
+            vectors = await asyncio.to_thread(lambda: [printer.embed(x) for _, x in jobs])
+        except Exception as e:  # noqa: BLE001 - a failed print falls back to the other cues
+            record("voiceprint", (time.perf_counter() - started) * 1000, call_id=self.call_id, ok=False, error=type(e).__name__)
+            return
+        for (key, _), vector in zip(jobs, vectors, strict=True):
+            self._stretch_prints[key] = vector
+        record("voiceprint", (time.perf_counter() - started) * 1000, call_id=self.call_id, source=self.source, n=len(jobs))
+
+    def _similarity(self, vector: np.ndarray, voice: int) -> float | None:
+        total = self._prints.get(voice)
+        if total is None:
+            return None
+        return float(vector @ total / (np.linalg.norm(total) or 1.0))
+
+    def _decide(self, vector: np.ndarray) -> tuple[int | None, float, float | None]:
+        user = self._similarity(vector, VOICE_USER) or 0.0
+        caller = self._similarity(vector, VOICE_CALLER)
+        if caller is not None:
+            if abs(user - caller) < SIM_MARGIN:
+                return None, user, caller
+            return (VOICE_USER if user > caller else VOICE_CALLER), user, caller
+        if user >= USER_SIM:
+            return VOICE_USER, user, caller
+        if user <= CALLER_SIM:
+            return VOICE_CALLER, user, caller
+        return None, user, caller
+
+    def _fallback_voice(self, stretch: list[Word]) -> int:
+        """For a stretch the print can't decide: Deepgram's speaker if it has clearly been one
+        voice so far, else the voice of the nearer loudness, else the previous voice."""
+        votes = self._votes.get(stretch[0].speaker, {})
+        if sum(votes.values()) >= 3:
+            voice, n = max(votes.items(), key=lambda kv: kv[1])
+            if n / sum(votes.values()) >= 0.8:
+                return voice
+        known = {v: self._loudness[v].db() for v in (VOICE_USER, VOICE_CALLER) if v in self._loudness and self._loudness[v].seconds >= MIN_CLASSIFY_S}
+        turn = self._measure(stretch)
+        if len(known) == 2 and turn.seconds > 0:
+            return min(known, key=lambda v: abs(known[v] - turn.db()))
+        return self._last_voice
+
+    def _route_by_voice(self, words: list[Word]) -> list[Word]:
+        out: list[Word] = []
+        decisions = []
+        for stretch in self._voice_stretches(words):
+            vector = self._stretch_prints.pop((stretch[0].start, stretch[-1].end), None)
+            voice: int | None = None
+            if vector is not None:
+                voice, user, caller = self._decide(vector)
+                decisions.append([round(user, 2), None if caller is None else round(caller, 2), voice])
+            if voice is None:
+                voice = self._fallback_voice(stretch)
+            elif vector is not None:
+                self._prints[voice] = self._prints.get(voice, np.zeros_like(vector)) + vector
+                self._weights[voice] = self._weights.get(voice, 0.0) + 1.0
+                votes = self._votes.setdefault(stretch[0].speaker, {})
+                votes[voice] = votes.get(voice, 0) + 1
+            self._last_voice = voice
+            out += [w.model_copy(update={"speaker": voice}) for w in stretch]
+        if decisions:
+            # Similarity to the user's and the caller's print per stretch: the evidence behind the labels.
+            record("voiceprint.match", 0.0, call_id=self.call_id, source=self.source, matches=decisions)
+        return out
+
     def _swap(self) -> None:
         # Invert every label heard so far and lock: the user knows best.
         self.locked = True
         self._locked_known = set(self._seen)
         self._set_user(set(self._seen) - self.user, "manual")
 
-    def _set_user(self, user: set[int], reason: Literal["first_turn", "loudness", "tone", "manual"]) -> None:
+    def _set_user(self, user: set[int], reason: Literal["first_turn", "loudness", "tone", "voice", "manual"]) -> None:
         self.user = user
         self._decided = True
         self.bus.publish(SpeakersUpdated(user_indices=sorted(user), reason=reason, locked=self.locked))

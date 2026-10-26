@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # Where saved calls live (SQLite). Empty = backend/data. On Railway: the volume's mount path.
     tenor_data_dir: str = ""
 
+    # Voice fingerprints: recognizes the user's voice from a sentence said at the mic check.
+    tenor_voice_model: str = "microsoft/wavlm-base-plus-sv"
+    # Debugging only: save live-call and voice-check audio as WAV under <data>/recordings.
+    tenor_save_audio: bool = False
+
     @property
     def origins(self) -> list[str]:
         items: list[str] = []

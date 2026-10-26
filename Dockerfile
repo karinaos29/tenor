@@ -21,6 +21,8 @@ RUN uv sync --frozen --no-dev
 
 # Bake the embedding model (~90 MB) into the image: no download on each cold start.
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device='cpu')"
+# And the voice-print model (~380 MB) that recognizes the user's voice after the voice check.
+RUN python -c "from transformers import AutoFeatureExtractor, WavLMForXVector; n = 'microsoft/wavlm-base-plus-sv'; AutoFeatureExtractor.from_pretrained(n); WavLMForXVector.from_pretrained(n)"
 ENV HF_HUB_OFFLINE=1
 
 COPY backend/ ./
@@ -28,6 +30,7 @@ COPY eval/results/latest.json /app/eval/results/latest.json
 
 # Fail the build, not the first call, if the tactic classifier can't load offline.
 RUN python -c "from detector.classifier import TacticClassifier; TacticClassifier.load()"
+RUN python -c "from pipeline.voiceprint import VoicePrinter; VoicePrinter.load('microsoft/wavlm-base-plus-sv')"
 
 # Saved calls (SQLite). Mount a Railway volume at /data to keep them across deploys.
 # Runs as root: Railway mounts volumes as root.

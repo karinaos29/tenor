@@ -1,16 +1,18 @@
 """FastAPI entry point. Run from backend/: `uv run uvicorn app.main:app --reload`."""
 
 import asyncio
+from collections import OrderedDict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import json
 import logging
 import re
 import time
+import uuid
 import wave
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
@@ -34,12 +36,14 @@ from pipeline.events import (
     ReplayList,
     ServiceStatus,
     SpeakersSwap,
+    VoiceEnrolled,
     client_event_adapter,
 )
 from pipeline.latency import record
 from pipeline.llm import fast_llm
 from pipeline.session import CallSession
 from pipeline.transcriber import DeepgramTranscriber
+from pipeline.voiceprint import ENROLL_MIN_SECONDS, SAMPLE_RATE, VoicePrinter, pcm_to_float, speech_only
 from detector.classifier import TacticClassifier
 from memo.email import send_memo
 from memo.store import DEFAULT_PATH, MemoStore
@@ -51,13 +55,17 @@ log = logging.getLogger("tenor.app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Loading the embedding model takes a few seconds (and downloads it once); do it off the loop.
-    app.state.classifier = await asyncio.to_thread(TacticClassifier.load_default)
+    # Loading the models takes a few seconds (and downloads them once); do it off the loop.
+    app.state.classifier, app.state.printer = await asyncio.gather(
+        asyncio.to_thread(TacticClassifier.load_default), asyncio.to_thread(VoicePrinter.load_default)
+    )
     yield
 
 
 app = FastAPI(title="Tenor", version=VERSION, lifespan=lifespan)
 app.state.classifier = None  # set at startup; None = tactic rules only
+app.state.printer = None  # set at startup; None = no voice check, speakers told apart by sound
+app.state.voices: OrderedDict[str, object] = OrderedDict()  # voice_id -> the user's print (recent few)
 
 # Hosted, the frontend (Vercel) and this API (Railway) are different origins.
 # Allow any Vercel deployment (*.vercel.app) plus any explicitly configured origins.
@@ -82,6 +90,7 @@ app.state.market_factory = lambda: RoutedMarketData(
 app.state.memo_llm_factory = lambda: fast_llm(get_settings().gemini_api_key, get_settings().tenor_model_memo, get_settings().tenor_memo_timeout_s)
 _data_dir = get_settings().tenor_data_dir
 app.state.store = MemoStore(Path(_data_dir) / "tenor.sqlite" if _data_dir else DEFAULT_PATH)
+app.state.recordings = (Path(_data_dir) if _data_dir else DEFAULT_PATH.parent) / "recordings"
 app.state.background: set[asyncio.Task] = set()  # memo writers outlive their call socket
 app.state.replay_dir = Path(__file__).resolve().parents[1] / "fixtures" / "calls"
 
@@ -203,6 +212,54 @@ async def email_memo(call_id: str, request: EmailRequest) -> EmailResult:
     return await send_memo(memo, request.to.strip(), api_key=s.resend_api_key, sender=s.memo_email_from)
 
 
+# --- Voice check ----------------------------------------------------------------------
+
+MAX_VOICES = 20
+MAX_ENROLL_BYTES = 20 * SAMPLE_RATE * 2  # 20 s of 16 kHz PCM
+
+
+@app.post("/api/voice")
+async def enroll_voice(request: Request) -> VoiceEnrolled:
+    """The user's voice print, from a sentence said at the mic check (raw 16 kHz int16 PCM).
+    Live calls that send the returned voice_id label "You" by matching this voice."""
+    printer: VoicePrinter | None = app.state.printer
+    if printer is None:
+        return VoiceEnrolled(ok=False, message="Voice recognition isn't available. Tenor will tell voices apart by sound.")
+    body = await request.body()
+    if len(body) > MAX_ENROLL_BYTES or len(body) % 2:
+        return VoiceEnrolled(ok=False, message="That recording couldn't be used. Try again.")
+    speech = speech_only(pcm_to_float(body))
+    if speech.size < ENROLL_MIN_SECONDS * SAMPLE_RATE:
+        return VoiceEnrolled(ok=False, message="Tenor couldn't hear enough. Say a full sentence, then try again.")
+    started = time.perf_counter()
+    try:
+        vector = await asyncio.to_thread(printer.embed, speech)
+    except Exception as e:  # noqa: BLE001 - voice check is optional
+        log.warning("voice check failed: %s", type(e).__name__)
+        return VoiceEnrolled(ok=False, message="Tenor couldn't learn your voice. Calls still work without it.")
+    record("voiceprint.enroll", (time.perf_counter() - started) * 1000, seconds=round(speech.size / SAMPLE_RATE, 1))
+    voice_id = uuid.uuid4().hex[:12]
+    voices: OrderedDict = app.state.voices
+    voices[voice_id] = vector
+    while len(voices) > MAX_VOICES:
+        voices.popitem(last=False)
+    if get_settings().tenor_save_audio:
+        _save_wav(app.state.recordings / f"voice-{voice_id}.wav", body)
+    return VoiceEnrolled(ok=True, voice_id=voice_id, message="Tenor knows your voice.")
+
+
+def _save_wav(path: Path, pcm: bytes) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(SAMPLE_RATE)
+            w.writeframes(pcm)
+    except OSError:
+        log.warning("could not save %s", path)
+
+
 # --- Replays -------------------------------------------------------------------------
 
 
@@ -259,6 +316,8 @@ async def call_socket(ws: WebSocket) -> None:
         await _close_with(ws, CallEnded(reason="error", detail="bad_start"))
         return
 
+    user_print = app.state.voices.get(first.voice_id) if first.source == "mic" and first.voice_id else None
+    live = first.source == "mic"
     session = CallSession(
         source,
         app.state.transcriber_factory(),
@@ -271,8 +330,11 @@ async def call_socket(ws: WebSocket) -> None:
         store=app.state.store,
         memo_llm=app.state.memo_llm_factory(),
         memo_timeout=get_settings().tenor_memo_timeout_s,
+        printer=app.state.printer,
+        user_print=user_print,
+        save_audio=app.state.recordings if live and get_settings().tenor_save_audio else None,
     )
-    log.info("call %s started (%s)", session.id, first.source)
+    log.info("call %s started (%s%s)", session.id, first.source, ", voice check" if session.printer else "")
     run = asyncio.create_task(session.run())
     receive = asyncio.create_task(_receive_call_messages(ws, session, source))
     try:

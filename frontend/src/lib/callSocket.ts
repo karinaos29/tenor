@@ -8,6 +8,8 @@ export const STOP_GRACE_MS = 3000;
 export interface CallSocketOptions {
   source: "mic" | "replay";
   replayId: string | null;
+  /** The user's voice from the mic check, so the server can recognize "You" by voice. */
+  voiceId?: string | null;
   onEvent: (event: TenorEvent) => void;
   /** The socket never opened within the timeout (or failed before opening). */
   onOpenFailed: () => void;
@@ -67,7 +69,7 @@ export function openCallSocket(opts: CallSocketOptions): CallSocket {
   ws.onopen = () => {
     opened = true;
     clearTimeout(openTimer);
-    sendJson({ type: "call.start", ts: new Date().toISOString(), source: opts.source, replay_id: opts.replayId });
+    sendJson({ type: "call.start", ts: new Date().toISOString(), source: opts.source, replay_id: opts.replayId, voice_id: opts.voiceId ?? null });
   };
   ws.onmessage = (msg) => {
     if (typeof msg.data !== "string") return;

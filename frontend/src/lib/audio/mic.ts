@@ -2,6 +2,7 @@ import workletUrl from "./capture.worklet?worker&url";
 import type { CaptureMessage } from "./capture.worklet";
 import { dbfsToLevel } from "./pcm";
 import { initialMicState, useMicStore } from "../../stores/mic";
+import { onVoiceFrame, startVoiceCheck, stopVoiceCheck } from "./voiceCheck";
 import type { MicPermission } from "../../stores/mic";
 
 /** Constraints matter: AGC would erase the loudness difference used to tell You from Caller. */
@@ -48,6 +49,7 @@ export async function checkMicrophone(): Promise<void> {
     const worklet = new AudioWorkletNode(ctx, "tenor-capture", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
     worklet.port.onmessage = (e: MessageEvent<CaptureMessage>) => {
       useMicStore.setState({ level: dbfsToLevel(e.data.dbfs) });
+      onVoiceFrame(e.data.frame, e.data.dbfs);
       sink?.(e.data.frame);
     };
     // Muted output keeps the node pulled by the audio graph without playing the mic back.
@@ -57,6 +59,7 @@ export async function checkMicrophone(): Promise<void> {
     node = worklet;
     await ctx.resume();
     useMicStore.setState({ permission: "granted", level: 0 });
+    startVoiceCheck();
   } catch {
     releaseMicrophone();
     set("error");
@@ -78,5 +81,11 @@ export function releaseMicrophone(): void {
   stream = null;
   void context?.close().catch(() => undefined);
   context = null;
-  useMicStore.setState({ ...initialMicState });
+  stopVoiceCheck();
+  // A learned voice outlives the microphone: the next call can use it without a new check.
+  useMicStore.setState((s) =>
+    s.voice === "ready"
+      ? { ...initialMicState, voice: "ready", voiceId: s.voiceId, voiceProgress: 1, voiceMessage: s.voiceMessage }
+      : { ...initialMicState },
+  );
 }

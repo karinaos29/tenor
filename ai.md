@@ -28,10 +28,11 @@ What made this work:
 | Job | Model | Thinking |
 |---|---|---|
 | Speech-to-text, both sides | Deepgram Nova-3 streaming, with diarization | — |
-| Offer terms, claims, verdicts, risk, speaker labels | no model: rules and arithmetic | — |
+| Offer terms, claims, verdicts, risk; speaker labels on replays | no model: rules and arithmetic | — |
 | Fuzzy extraction ("signed a deal") | `gemini-3.5-flash-lite` + `gemini-3.1-flash-lite`, hedged | minimal |
 | Plain-words research summaries | same, hedged, under a number guard | minimal |
 | Pressure tactics | `all-MiniLM-L6-v2` + logistic regression, local (~9 ms per line) | — |
+| Who is "You" on a live call | `microsoft/wavlm-base-plus-sv` voice prints, local (~0.17 s per segment) | — |
 | Memo summary | `gemini-3.8-flash` + both flash-lite models, hedged, under number and word guards | low / minimal |
 | Test-call voices (development only) | `gemini-3.8-flash-tts`, macOS `say` as fallback | — |
 

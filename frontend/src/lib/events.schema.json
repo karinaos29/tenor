@@ -26,6 +26,9 @@
     },
     "savedCallList": {
       "$ref": "#/$defs/SavedCallList"
+    },
+    "voiceEnrolled": {
+      "$ref": "#/$defs/VoiceEnrolled"
     }
   },
   "required": [
@@ -36,7 +39,8 @@
     "emailRequest",
     "emailResult",
     "emailDefaults",
-    "savedCallList"
+    "savedCallList",
+    "voiceEnrolled"
   ],
   "$defs": {
     "CallEnded": {
@@ -101,13 +105,26 @@
             }
           ],
           "default": null
+        },
+        "voice_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The user's voice from the mic check (POST /api/voice)"
         }
       },
       "required": [
         "ts",
         "type",
         "source",
-        "replay_id"
+        "replay_id",
+        "voice_id"
       ],
       "title": "CallStart",
       "type": "object"
@@ -856,6 +873,7 @@
             "first_turn",
             "loudness",
             "tone",
+            "voice",
             "manual"
           ],
           "type": "string"
@@ -2074,6 +2092,34 @@
         "calls"
       ],
       "title": "SavedCallList",
+      "type": "object"
+    },
+    "VoiceEnrolled": {
+      "description": "POST /api/voice: the user's voice print from the mic check.",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "voice_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "message"
+      ],
+      "title": "VoiceEnrolled",
       "type": "object"
     }
   }

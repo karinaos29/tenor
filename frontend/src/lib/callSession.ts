@@ -1,6 +1,8 @@
 import { openCallSocket } from "./callSocket";
 import type { CallSocket } from "./callSocket";
 import { releaseMicrophone, setFrameSink } from "./audio/mic";
+import { stopVoiceCheck } from "./audio/voiceCheck";
+import { useMicStore } from "../stores/mic";
 import type { ReplayInfo } from "./events.gen";
 import { useAppStore } from "../stores/app";
 import { useCallStore } from "../stores/call";
@@ -16,9 +18,11 @@ export function startCall(source: "mic" | "replay", replay: ReplayInfo | null = 
   app.setStartError(null);
   app.setScreen("live");
 
+  if (source === "mic") stopVoiceCheck();
   const socket = openCallSocket({
     source,
     replayId: replay?.id ?? null,
+    voiceId: source === "mic" ? useMicStore.getState().voiceId : null,
     onEvent: (event) => {
       useCallStore.getState().dispatch(event);
       if (event.type === "call.ended") finish(socket);

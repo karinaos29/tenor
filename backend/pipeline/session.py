@@ -22,11 +22,16 @@ import asyncio
 import logging
 import time
 import uuid
+import wave
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
-from audio.sources import FRAME_SECONDS, AudioSource, frame_bands, frame_dbfs
+import numpy as np
+
+from audio.sources import FRAME_SECONDS, SAMPLE_RATE, AudioSource, frame_bands, frame_dbfs
 from pipeline.bus import EventBus, Subscription
 from pipeline.events import (
+    AudioFrame,
     AudioLevel,
     CallEnded,
     CallStarted,
@@ -58,6 +63,7 @@ from pipeline.offer import OfferTracker
 from pipeline.research import ResearchAgent
 from pipeline.speakers import SpeakerLabeler
 from pipeline.suggestions import SuggestionEngine
+from pipeline.voiceprint import VoicePrinter
 from pipeline.tactics import PressureDetector
 from memo.store import MemoStore
 from memo.writer import MemoWriter
@@ -115,6 +121,9 @@ class CallSession:
         store: MemoStore | None = None,
         memo_llm: LlmClient | HedgedLlm | None = None,
         memo_timeout: float = 20.0,
+        printer: VoicePrinter | None = None,
+        user_print: np.ndarray | None = None,
+        save_audio: Path | None = None,
         forward: tuple[type[Event], ...] = UI_EVENTS,
     ) -> None:
         self.id = uuid.uuid4().hex[:8]
@@ -133,6 +142,10 @@ class CallSession:
         self.memo_llm = memo_llm
         self.memo_timeout = memo_timeout
         self.memo_task: asyncio.Task | None = None  # finishes after the call; never awaited by run()
+        self.printer = printer if user_print is not None else None  # voice mode: the user did a voice check
+        self.user_print = user_print
+        self.save_audio = save_audio  # debugging: the call's audio as a WAV in this folder
+        self._recording: list[bytes] = []
         self.forward = forward
         self.bus = EventBus()
         self._stopped_by_user = False
@@ -150,7 +163,7 @@ class CallSession:
         forwarder = asyncio.create_task(self._forward(self.bus.subscribe(*self.forward)))
         kind = self.source.kind
         # Components subscribe in their constructors, before any event is published.
-        labeler = asyncio.create_task(SpeakerLabeler(self.bus, self.id, kind).run())
+        labeler = asyncio.create_task(SpeakerLabeler(self.bus, self.id, kind, self.printer, self.user_print).run())
         extractor = asyncio.create_task(EntityExtractor(self.bus, self.catalog, self.llm, call_id=self.id, source=kind).run())
         tracker = asyncio.create_task(OfferTracker(self.bus, call_id=self.id, source=kind).run())
         ctx = TranscriberContext(call_id=self.id, source=self.source.kind, realtime=self.source.realtime)
@@ -197,8 +210,23 @@ class CallSession:
             if self._stopped_by_user and reason != "error":
                 reason = "user"
             self.bus.publish(CallEnded(reason=reason, detail=detail))  # type: ignore[arg-type]
+            self._write_recording()
             await self._finish(forwarder, 2.0)
             self.bus.close()
+
+    def _write_recording(self) -> None:
+        if self.save_audio is None or not self._recording:
+            return
+        try:
+            self.save_audio.mkdir(parents=True, exist_ok=True)
+            with wave.open(str(self.save_audio / f"{self.id}.wav"), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(SAMPLE_RATE)
+                w.writeframes(b"".join(self._recording))
+            log.info("saved call %s audio to %s", self.id, self.save_audio)
+        except OSError:
+            log.warning("could not save call audio to %s", self.save_audio)
 
     async def _pump(self, audio: "asyncio.Queue[AudioItem]", ctx: TranscriberContext) -> None:
         index = 0
@@ -209,6 +237,10 @@ class CallSession:
             # Level first, so the labeler always has loudness for the words that follow.
             bass_db, voice_db = frame_bands(frame)
             self.bus.publish(AudioLevel(t=t, dbfs=frame_dbfs(frame), bass_db=bass_db, voice_db=voice_db))
+            if self.printer is not None:
+                self.bus.publish(AudioFrame(t=t, pcm=frame))  # the labeler matches stretches to the user's voice
+            if self.save_audio is not None:
+                self._recording.append(frame)
             if self.source.realtime:
                 self._put(audio, (t, frame))  # live audio can't wait: drop the oldest if behind
             else:
