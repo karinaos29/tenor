@@ -516,6 +516,29 @@ class EntitiesClosed(Event):
     type: Literal["entities.closed"] = "entities.closed"
 
 
+class IdentityGap(Event):
+    """The caller is pitching but hasn't said which firm they're from ("missing"), or was
+    asked and didn't answer ("evaded"). `t` is seconds from call start."""
+
+    type: Literal["identity.gap"] = "identity.gap"
+    kind: Literal["missing", "evaded"]
+    t: float
+    question: str | None = Field(default=None, description="The question about the firm, for kind 'evaded'")
+
+
+class IdentityResolved(Event):
+    """The caller named a firm after a "missing" gap. An "evaded" gap is never resolved."""
+
+    type: Literal["identity.resolved"] = "identity.resolved"
+    firm: str
+
+
+class IdentityClosed(Event):
+    """The identity watcher has finished (end-of-call chain)."""
+
+    type: Literal["identity.closed"] = "identity.closed"
+
+
 # --- Unions -------------------------------------------------------------------------
 
 # Everything that crosses a WebSocket. TypeScript types are generated from this.

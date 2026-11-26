@@ -29,6 +29,8 @@ HONEST = [
     "This account has no minimum.",
     "Markets have gone up and down over time.",
     "The deadline is at the end of the tax year, no pressure.",
+    "You don't have to decide today.",
+    "There's no need to decide today.",
 ]
 
 

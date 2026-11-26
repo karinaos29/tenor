@@ -67,7 +67,11 @@ EXCEPTIONS: dict[str, re.Pattern[str]] = {
         r"|\binsured\b|\bup to the (?:legal )?limit\b|\bby law\b|\bdeposit (?:protection|insurance)\b",
         _I,
     ),
-    "urgency": re.compile(r"\bno (?:rush|pressure|hurry)\b|\btake your time\b", _I),
+    "urgency": re.compile(
+        r"\bno (?:rush|pressure|hurry)\b|\btake your time\b"
+        r"|\b(?:don'?t|do not|doesn'?t|does not|won'?t|not|never)\s+(?:have|need)\s+to\s+decide\b|\bno need to decide\b",
+        _I,
+    ),
     "fomo_regret": re.compile(r"\bwon'?t miss out\b|\bno need to worry about missing\b", _I),
 }
 

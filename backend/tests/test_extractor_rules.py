@@ -156,6 +156,33 @@ def test_unknown_firm_is_heard():
 
 
 @pytest.mark.parametrize(
+    "text",
+    [
+        "This is Tom Becker from Northgate Wealth.",
+        "Hello, it's Priya, from Northgate Wealth.",
+        "I'm with Northgate Wealth, the investment people.",
+        "I'm calling on behalf of Northgate Wealth.",
+        "I work for Northgate Wealth.",
+    ],
+)
+def test_firm_introductions_are_heard(text):
+    assert one(text, "firm").value == "Northgate Wealth"
+
+
+@pytest.mark.parametrize("text", ["I'm with you on that.", "I'm calling from home today.", "This is Tom from the bank."])
+def test_no_firm_without_a_capitalized_name(text):
+    assert ents(text, "firm") == []
+
+
+def test_firm_intro_keeps_the_person():
+    assert one("This is Tom Becker from Northgate Wealth.", "person").value == "Tom Becker"
+
+
+def test_listed_company_is_not_the_callers_firm():
+    assert ents("I'm calling on behalf of Kestrel Motors.", "firm") == []
+
+
+@pytest.mark.parametrize(
     ("text", "name"),
     [("My name is Daniel Reeves, I work here.", "Daniel Reeves"), ("Hello, this is Maria Lopez from the bank.", "Maria Lopez")],
 )

@@ -60,6 +60,7 @@ from pipeline.events import (  # noqa: E402
 from memo.writer import FORBIDDEN, MemoWriter  # noqa: E402
 from pipeline.events import CallEnded, CallStarted  # noqa: E402
 from pipeline.extractor import EntityExtractor  # noqa: E402
+from pipeline.identity import IdentityWatcher  # noqa: E402
 from pipeline.latency import LOG_PATH  # noqa: E402
 from pipeline.llm import fast_llm  # noqa: E402
 from pipeline.offer import OfferTracker  # noqa: E402
@@ -250,7 +251,8 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
             ClaimChecker(bus, market),
             ResearchAgent(bus, market, FixtureRegister(catalog), catalog, None),
             PressureDetector(bus, classifier),
-            SuggestionEngine(bus, wait_for=("checks", "research", "tactics")),
+            IdentityWatcher(bus),
+            SuggestionEngine(bus, wait_for=("checks", "research", "tactics", "identity")),
         )
     ]
     writer = MemoWriter(bus, None, None)  # template summary: deterministic in text mode

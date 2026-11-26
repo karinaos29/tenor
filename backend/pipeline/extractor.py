@@ -66,7 +66,14 @@ _FEE_CUE = re.compile(r"\b(fees?|commission|charges?)\b", re.I)
 _YEARLY = re.compile(r"\b(?:a|per) year\b|\bannual(?:ly)?\b", re.I)
 _PERSON = re.compile(r"\b(?:[Mm]y name is|[Tt]his is|I'm|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)")
 _NOT_A_NAME = {"Just", "Calling", "Sorry", "Speaking", "Fine", "Great", "Here", "Not", "Afraid", "Happy", "Glad", "Sure", "Only"}
-_CALLING_FROM = re.compile(r"\bcalling from\s+([A-Z][\w'-]*(?:\s+(?:and|&|of)?\s*[A-Z][\w'-]*){0,4})")
+# A firm the caller introduces: "calling from X", "I'm with X", "on behalf of X", "This is Tom from X".
+# Capitalized words only, so "I'm with you" isn't a firm. (A missed firm makes the identity
+# watcher report a missing firm, so ordinary introductions must be caught without the LLM.)
+_FIRM_INTRO = re.compile(
+    r"\b(?:calling (?:from|on behalf of)|on behalf of|I'?m with|I am with|I work (?:for|at)|here at"
+    r"|(?:[Tt]his is|[Ii]t'?s|I'?m|I am|[Mm]y name is)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,?\s+(?:from|with))"
+    r"\s+([A-Z][\w'-]*(?:\s+(?:and|&|of)?\s*[A-Z][\w'-]*){0,4})"
+)
 _SPELLED = re.compile(r"\b([A-Z](?:[ .-][A-Z]){1,4})\b")
 _UPPER = re.compile(r"\b([A-Z]{2,5}(?:\.[A-Z])?)\b")
 # A company is "on offer" (not just mentioned, like "the next Apple") when introduced or priced.
@@ -244,6 +251,12 @@ def _fees(c: _Ctx, out: RuleResult) -> None:
             out.entities.append(RuleEntity("fee", money(value), c.said(a + m.start(), a + m.end()), value, "USD"))
 
 
+def catalog_company(catalog: Catalog, text: str) -> bool:
+    """A listed company (the thing on offer), not the caller's firm."""
+    lowered = text.lower()
+    return any(lowered == c.ticker.lower() or lowered in (a.lower() for a in c.aliases) for c in catalog.companies.values())
+
+
 def _names(c: _Ctx, catalog: Catalog, out: RuleResult) -> None:
     firm_spans: list[tuple[int, int]] = []
     lowered = c.n.lower()
@@ -256,9 +269,10 @@ def _names(c: _Ctx, catalog: Catalog, out: RuleResult) -> None:
                 break
         if firm_spans:
             break
-    if not firm_spans and (m := _CALLING_FROM.search(c.n)):
+    if not firm_spans and (m := _FIRM_INTRO.search(c.n)) and not catalog_company(catalog, m.group(1).rstrip(".,")):
         name = m.group(1).rstrip(".,")
         out.entities.append(RuleEntity("firm", name, c.said(m.start(1), m.start(1) + len(name))))
+        firm_spans.append((m.start(1), m.start(1) + len(name)))
     # Rank candidates: "my name is" beats "this is", and a full name beats one word.
     # (Deepgram heard "is this Eszter?" as "This is Esther." before "This is Tom Becker".)
     candidates = []

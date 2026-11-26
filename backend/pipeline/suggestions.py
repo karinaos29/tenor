@@ -1,14 +1,19 @@
 """Suggestion engine + risk score: scored rules, fully deterministic.
 
-Merges checked claims, research, and offer changes and pressure tactics into ranked
+Merges checked claims, research, offer changes, pressure tactics and caller-identity gaps into ranked
 suggestions: "say this" lines (fixed first-person templates) and research cards. At most
 four are visible, highest priority first; the rest are kept as `earlier` for the memo.
 "Say this" lines expire after `say_ttl_s` unless the same signal fires again.
 
 The risk score is a sum of listed reasons, capped at 100. The LLM is not involved.
+Pressure tactics count more when a fact backs them up: while the caller hasn't said their
+firm, dodged the question, or named an unregistered firm, each distinct tactic adds
+`UNIDENTIFIED_POINTS` under its own listed reason (classifier flags alone back each other
+up poorly: honest eval calls collect several distinct ones too; see docs/decisions.md).
 
-Consumes: ClaimChecked, ResearchReady, OfferUpdated, OfferChanged, TacticFlagged, and the
-ChecksClosed / ResearchClosed / TacticsClosed end markers.
+Consumes: ClaimChecked, ResearchReady, OfferUpdated, OfferChanged, TacticFlagged,
+IdentityGap, IdentityResolved, and the ChecksClosed / ResearchClosed / TacticsClosed /
+IdentityClosed end markers.
 Publishes: SuggestionsUpdated, RiskUpdated.
 """
 
@@ -21,6 +26,9 @@ from pipeline.events import (
     ChecksClosed,
     Claim,
     ClaimChecked,
+    IdentityClosed,
+    IdentityGap,
+    IdentityResolved,
     OfferChanged,
     OfferUpdated,
     ResearchClosed,
@@ -47,6 +55,17 @@ SAME_DAY = ("today", "tonight", "this afternoon", "this evening", "end of day")
 TACTIC_POINTS = {"strong": 15, "mild": 3}
 # Tactics that share a "say this" line and risk reason with an M3 signal, so they don't count twice.
 SHARED_KEYS = {"urgency": ("say-deadline", "deadline"), "guarantee": ("say-guarantee", "guarantee")}
+# A caller who won't say who they are (see pipeline/identity.py).
+IDENTITY_POINTS = {"missing": 15, "evaded": 25}
+IDENTITY_LABEL = {"missing": "The caller didn't say which firm they're from", "evaded": "The caller didn't answer which firm they're from"}
+# Each distinct tactic from a caller Tenor couldn't identify, on top of the tactic's own points.
+UNIDENTIFIED_POINTS = 12
+UNIDENTIFIED_CAP = 36
+UNIDENTIFIED_WHO = {
+    "missing": "from a caller who didn't say their firm",
+    "evaded": "from a caller who wouldn't say their firm",
+    "unregistered": "from a firm that isn't registered",
+}
 
 PERIOD_PHRASE = {
     "last 13 weeks": "Over the last three months",
@@ -83,15 +102,18 @@ class SuggestionEngine:
         self.say_ttl = timedelta(seconds=say_ttl_s)
         self.tick_s = tick_s
         self._sub = bus.subscribe(
-            ChecksClosed, ClaimChecked, OfferChanged, OfferUpdated, ResearchClosed, ResearchReady, TacticFlagged, TacticsClosed
-        )
+            ChecksClosed, ClaimChecked, IdentityClosed, IdentityGap, IdentityResolved, OfferChanged, OfferUpdated,
+            ResearchClosed, ResearchReady, TacticFlagged, TacticsClosed,
+        )  # fmt: skip
         self._items: dict[str, Suggestion] = {}
         self._expired: dict[str, Suggestion] = {}
         self._reasons: dict[str, RiskReason] = {}
         self._firm_unregistered = False
+        self._identity_gap: str | None = None  # "missing" or "evaded" (pipeline/identity.py)
+        self._tactics: set[str] = set()  # distinct tactics flagged so far
         self._payment: str | None = None
         self._closed: set[str] = set()
-        self._wait_for = set(wait_for)  # end markers to wait for; the session adds "tactics"
+        self._wait_for = set(wait_for)  # end markers to wait for; the session adds "tactics" and "identity"
         self._last: tuple | None = None
         self._last_risk: tuple | None = None
         # Risk is shown only once something has been checked, so "Low" never means "nothing looked at yet".
@@ -126,6 +148,13 @@ class SuggestionEngine:
                 self._on_tactic(event.flag)
             elif isinstance(event, TacticsClosed):
                 self._closed.add("tactics")
+            elif isinstance(event, IdentityGap):
+                self._assessed = True
+                self._on_identity_gap(event)
+            elif isinstance(event, IdentityResolved):
+                self._on_identity_resolved()
+            elif isinstance(event, IdentityClosed):
+                self._closed.add("identity")
             self._expire()
         self._publish(force=True)
         self._sub.close()
@@ -142,7 +171,8 @@ class SuggestionEngine:
 
     def _risk(self, key: str, label: str, points: int) -> None:
         """Add a reason, or raise its points. A reason never loses points (a strong urgency
-        flag must not be overwritten by the smaller deadline rule that fires later)."""
+        flag must not be overwritten by the smaller deadline rule that fires later). The one
+        exception: a missing firm that the caller names later (`_on_identity_resolved`)."""
         current = self._reasons.get(key)
         if current is None or points >= current.points:
             self._reasons[key] = RiskReason(label=label if current is None or points > current.points else current.label, points=points)
@@ -180,6 +210,7 @@ class SuggestionEngine:
             self._say("say-register", f"{item.subject} isn't in the register", text, 90, item.summary, item.source)
             self._risk("register", "The firm isn't in the register", 25)
             self._payment_rule()
+            self._unidentified()
 
     def _on_offer(self, event: OfferUpdated) -> None:
         offer = event.offer
@@ -207,6 +238,37 @@ class SuggestionEngine:
         if current is None or points > current.points:
             label = current.label if current is not None and risk_key in ("deadline", "guarantee") else f"Pressure: {tactic.label.lower()} ({flag.severity})"
             self._risk(risk_key, label, max(points, current.points if current else 0))
+        self._tactics.add(flag.tactic)
+        self._unidentified()
+
+    def _on_identity_gap(self, gap: IdentityGap) -> None:
+        if gap.kind == "evaded" or self._identity_gap is None:
+            self._identity_gap = gap.kind
+        text = "Which company are you calling from? I'd like to look you up before we go on."
+        reason = f"You asked: “{gap.question}”" if gap.kind == "evaded" and gap.question else "The caller hasn't said which firm they're from."
+        self._say("say-identity", IDENTITY_LABEL[self._identity_gap], text, 72, reason)
+        self._risk("identity", IDENTITY_LABEL[self._identity_gap], IDENTITY_POINTS[self._identity_gap])
+        self._unidentified()
+
+    def _on_identity_resolved(self) -> None:
+        """The caller named a firm after all: the "missing" reason is withdrawn and the register
+        check takes over. (An "evaded" gap is never resolved; the dodge happened.)"""
+        if self._identity_gap != "missing":
+            return
+        self._identity_gap = None
+        self._reasons.pop("identity", None)
+        self._items.pop("say-identity", None)
+        self._unidentified()
+
+    def _unidentified(self) -> None:
+        """Pressure backed by a fact: each distinct tactic from a caller Tenor couldn't identify."""
+        who = self._identity_gap or ("unregistered" if self._firm_unregistered else None)
+        if who is None or not self._tactics:
+            self._reasons.pop("unidentified", None)
+            return
+        n = len(self._tactics)
+        label = f"Pressure {UNIDENTIFIED_WHO[who]} ({n} {'tactic' if n == 1 else 'tactics'})"
+        self._reasons["unidentified"] = RiskReason(label=label, points=min(UNIDENTIFIED_CAP, UNIDENTIFIED_POINTS * n))
 
     def _on_change(self, event: OfferChanged) -> None:
         c = event.change

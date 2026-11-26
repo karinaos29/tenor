@@ -30,6 +30,7 @@ One Python module per job, each tested and timed on its own.
 | Claim checker | Claim vs. data | Arithmetic on Finnhub or fixture data | `pipeline/checker.py` |
 | Research agent | Firm register, real price history, news; prefetched on first mention | Data first; Gemini rewords under a number guard | `pipeline/research.py` |
 | Pressure detector | 8 tactics per caller sentence | MiniLM embeddings + logistic regression, plus rules | `pipeline/tactics.py`, `detector/` |
+| Identity watcher | A pitching caller who doesn't say, or won't say, their firm | Rules on the transcript and the offer's firm | `pipeline/identity.py` |
 | Suggestion engine | "Say this" lines + evidence (≤ 4) and the risk score | Scored rules; risk = capped sum of listed reasons | `pipeline/suggestions.py` |
 | Memo writer | The decision memo after hang-up | Built from facts; Gemini words only the summary, under guards; SQLite; email via Resend | `memo/` |
 
@@ -41,13 +42,14 @@ Every event is a Pydantic model with a timestamp (`pipeline/events.py`). The Typ
 | Event | From | To |
 |---|---|---|
 | `transcript.segment` / `transcript.closed` | Transcriber | Speaker labeler |
-| `utterance.partial` / `.progress` / `.final`, `speakers.updated` | Speaker labeler | Extractor, pressure detector, checker, panel |
+| `utterance.partial` / `.progress` / `.final`, `speakers.updated` | Speaker labeler | Extractor, pressure detector, identity watcher, checker, panel |
 | `entity.detected` | Extractor | Offer tracker, research agent |
 | `claim.extracted` | Extractor | Claim checker |
-| `offer.updated` / `offer.changed` | Offer tracker | Checker (price), suggestion engine, panel |
+| `offer.updated` / `offer.changed` | Offer tracker | Checker (price), identity watcher, suggestion engine, panel |
 | `claim.checked` | Claim checker | Suggestion engine, panel |
 | `research.ready` | Research agent | Suggestion engine, panel |
-| `tactic.flagged` | Pressure detector | Suggestion engine, panel |
+| `tactic.flagged` | Pressure detector | Identity watcher, suggestion engine, panel |
+| `identity.gap` / `identity.resolved` | Identity watcher | Suggestion engine |
 | `suggestions.updated` / `risk.updated` | Suggestion engine | Panel |
 | `call.ended` → `memo.ready` | Session → memo writer | Memo screen (polls REST) |
 

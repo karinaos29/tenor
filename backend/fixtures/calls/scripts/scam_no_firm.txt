@@ -1,0 +1,19 @@
+# Manipulative call, modeled on a live test call. The caller never names a firm and dodges when asked.
+# No company, ticker or firm is named, so nothing can be checked against data: only the pressure and the
+# missing identity show the risk. Fictional; no real firm is involved.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, good afternoon! Am I speaking with Eszter?
+YOU: Yes, speaking. Who is this?
+CALLER: Wonderful. I'm calling because we have a really quick Black Friday offer for you.
+YOU: An offer for what?
+CALLER: Only for these two days, we have a really good investment idea, and it offers you a very safe return.
+YOU: Sorry, which company are you calling from?
+CALLER: That's not so important right now. What matters is that the window is short.
+YOU: I'd still like to know who I'm speaking with.
+CALLER: We are a small team that works with selected clients. Most people who hear about it get in straight away.
+YOU: I don't make decisions like this on the phone.
+CALLER: I understand, but you would be kicking yourself if you waited until next week.
+YOU: Please send me something in writing.
+CALLER: I can explain everything on the phone, it's very simple, you don't need any paperwork for this.
+YOU: I'll think about it. Goodbye.
