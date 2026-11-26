@@ -7,7 +7,8 @@
     entity.* (ticker, firm) -> research agent (prefetch, LLM rewords) -> research.ready
     utterance.* (caller sentences) -> pressure detector (classifier + rules) -> tactic.flagged
     utterance.final / offer.* / tactic.flagged / claim.* -> identity watcher -> identity.gap / identity.resolved
-    claim.checked / research.ready / offer.* / tactic.flagged / identity.* -> suggestion engine -> suggestions.updated, risk.updated
+    utterance.* (both speakers) -> secret guard (rules) -> secret.requested / secret.sharing
+    claim.checked / research.ready / offer.* / tactic.flagged / identity.* / secret.* -> suggestion engine -> suggestions.updated, risk.updated
 
 End of call is a chain, so nothing is cut off: transcript.closed -> labeler ->
 utterances.closed -> extractor (waits for pending LLM calls) -> entities.closed ->
@@ -47,6 +48,9 @@ from pipeline.events import (
     ResearchClosed,
     ResearchReady,
     RiskUpdated,
+    SecretRequested,
+    SecretsClosed,
+    SecretSharing,
     SpeakersSwap,
     SpeakersUpdated,
     SuggestionsUpdated,
@@ -64,6 +68,7 @@ from pipeline.identity import IdentityWatcher
 from pipeline.llm import HedgedLlm, LlmClient
 from pipeline.offer import OfferTracker
 from pipeline.research import ResearchAgent
+from pipeline.safety import SecretGuard
 from pipeline.speakers import SpeakerLabeler
 from pipeline.suggestions import SuggestionEngine
 from pipeline.voiceprint import VoicePrinter
@@ -92,6 +97,8 @@ UI_EVENTS: tuple[type[Event], ...] = (
     SuggestionsUpdated,
     RiskUpdated,
     TacticFlagged,
+    SecretRequested,
+    SecretSharing,
     CallEnded,
 )
 
@@ -184,10 +191,11 @@ class CallSession:
         )  # fmt: skip
         tactics = asyncio.create_task(PressureDetector(self.bus, self.classifier, call_id=self.id, source=kind).run())
         identity = asyncio.create_task(IdentityWatcher(self.bus, call_id=self.id, source=kind).run())
+        guard = asyncio.create_task(SecretGuard(self.bus, call_id=self.id, source=kind, clock=clock).run())
         # The memo writer collects the whole call and writes after call.ended, in the background.
         self.memo_task = asyncio.create_task(MemoWriter(self.bus, self.store, self.memo_llm, timeout_s=self.memo_timeout).run())
         suggestions = asyncio.create_task(
-            SuggestionEngine(self.bus, call_id=self.id, wait_for=("checks", "research", "tactics", "identity")).run()
+            SuggestionEngine(self.bus, call_id=self.id, wait_for=("checks", "research", "tactics", "identity", "secrets")).run()
         )
         audio: asyncio.Queue[AudioItem] = asyncio.Queue(maxsize=AUDIO_BUFFER_FRAMES + 1)
 
@@ -211,6 +219,7 @@ class CallSession:
             await self._finish(research, VERIFY_FINISH_TIMEOUT, on_timeout=ResearchClosed())
             await self._finish(tactics, VERIFY_FINISH_TIMEOUT, on_timeout=TacticsClosed())
             await self._finish(identity, VERIFY_FINISH_TIMEOUT, on_timeout=IdentityClosed())
+            await self._finish(guard, LABELER_FINISH_TIMEOUT, on_timeout=SecretsClosed())
             await self._finish(suggestions, SUGGESTIONS_FINISH_TIMEOUT)
             if self._stopped_by_user and reason != "error":
                 reason = "user"

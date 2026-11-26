@@ -1,4 +1,26 @@
-import type { CallEnded, Claim, Offer, ResearchItem, RiskUpdated, Suggestion, TacticFlag, TenorEvent, Utterance } from "./events.gen";
+import type {
+  CallEnded,
+  Claim,
+  Offer,
+  ResearchItem,
+  RiskUpdated,
+  SecretRequested,
+  Suggestion,
+  TacticFlag,
+  TenorEvent,
+  Utterance,
+} from "./events.gen";
+
+/** The pinned warning after someone asks for a private detail (backend/pipeline/safety.py). */
+export interface SecretAlert {
+  kind: SecretRequested["kind"];
+  level: SecretRequested["level"];
+  label: string;
+  quote: string;
+  /** The start of an answer was heard after a "stop" request. */
+  sharing: boolean;
+  hidden: boolean;
+}
 
 export type CallPhase = "connecting" | "live" | "ended" | "lost";
 export type Role = "caller" | "user";
@@ -22,6 +44,7 @@ export interface CallState {
   suggestions: { visible: Suggestion[]; earlier: Suggestion[] };
   risk: RiskUpdated | null;
   tactics: TacticFlag[];
+  secret: SecretAlert | null;
 }
 
 export const LOST_MESSAGE = "Lost connection to Tenor's server. This call is no longer being transcribed.";
@@ -45,6 +68,7 @@ export const initialCallState: CallState = {
   suggestions: { visible: [], earlier: [] },
   risk: null,
   tactics: [],
+  secret: null,
 };
 
 const CALL_EVENT_TYPES = new Set<string>([
@@ -61,6 +85,8 @@ const CALL_EVENT_TYPES = new Set<string>([
   "suggestions.updated",
   "risk.updated",
   "tactic.flagged",
+  "secret.requested",
+  "secret.sharing",
 ]);
 
 /** Parse a raw socket message. Returns null for anything that isn't a known server call event. */
@@ -122,11 +148,30 @@ export function applyCallEvent(state: CallState, event: TenorEvent, nowMs: numbe
       return { ...state, risk: event };
     case "tactic.flagged":
       return state.tactics.some((t) => t.id === event.flag.id) ? state : { ...state, tactics: [...state.tactics, event.flag] };
+    case "secret.requested": {
+      const current = state.secret;
+      // Never downgrade a "stop" warning to a "check" one.
+      if (current && current.level === "stop" && event.level === "check") return state;
+      const same = current !== null && current.kind === event.kind;
+      return {
+        ...state,
+        secret: { kind: event.kind, level: event.level, label: event.label, quote: event.quote, sharing: same && current.sharing, hidden: false },
+      };
+    }
+    case "secret.sharing":
+      return {
+        ...state,
+        secret: { kind: event.kind, level: "stop", label: event.label, quote: state.secret?.quote ?? "", sharing: true, hidden: false },
+      };
     case "call.ended":
       return state.phase === "lost" ? state : { ...state, phase: "ended", endReason: event.reason, endedAtMs: nowMs };
     default:
       return state;
   }
+}
+
+export function hideSecret(state: CallState): CallState {
+  return state.secret ? { ...state, secret: { ...state.secret, hidden: true } } : state;
 }
 
 export function applyCallLost(state: CallState, nowMs: number): CallState {

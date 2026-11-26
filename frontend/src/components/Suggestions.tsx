@@ -35,7 +35,10 @@ function Research({ s }: { s: Suggestion }) {
 }
 
 export function Suggestions() {
-  const visible = useCallStore((s) => s.suggestions.visible).slice(0, 4);
+  const all = useCallStore((s) => s.suggestions.visible);
+  const bannerShown = useCallStore((s) => s.secret !== null && !s.secret.hidden);
+  // While the safety banner shows the line to say, it isn't repeated here.
+  const visible = (bannerShown ? all.filter((s) => !s.id.startsWith("say-secret")) : all).slice(0, 4);
   const reduce = useReducedMotion();
   if (visible.length === 0) {
     return <p className="muted">Tenor&apos;s suggestions appear here when there&apos;s something worth saying or checking.</p>;

@@ -39,8 +39,8 @@ describe("LiveScreen", () => {
   });
 
   it.each([
-    ["reconnecting", "", "Transcription paused. Reconnecting…"],
-    ["unavailable", "unreachable", "Transcription is off: couldn't reach the speech service."],
+    ["reconnecting", "", "Transcription paused. Reconnecting… Tenor can't warn you about requests for codes until it's back."],
+    ["unavailable", "unreachable", "Transcription is off: couldn't reach the speech service. Tenor can't warn you about requests for codes until it's back."],
     ["unavailable", "no_key", "The speech-to-text key is missing."],
   ] as const)("shows transcriber %s (%s)", (state, detail, text) => {
     render(<LiveScreen />);

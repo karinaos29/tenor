@@ -11,5 +11,7 @@
   "honest_many_customers": "Adviser: balanced fund",
   "honest_insurance_review": "Home insurance review",
   "honest_pension_checkin": "Pension annual check-in",
-  "honest_bond_info": "Bank: savings bonds"
+  "honest_bond_info": "Bank: savings bonds",
+  "scam_code_request": "'Security team' asks for a code",
+  "honest_code_warning": "Bank: never share your code"
 }

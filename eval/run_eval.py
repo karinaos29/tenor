@@ -48,6 +48,8 @@ from pipeline.events import (  # noqa: E402
     EvalReport,
     MetricRow,
     RiskUpdated,
+    SecretRequested,
+    SecretSharing,
     StageLatency,
     SuggestionsUpdated,
     TacticFlagged,
@@ -65,6 +67,7 @@ from pipeline.latency import LOG_PATH  # noqa: E402
 from pipeline.llm import fast_llm  # noqa: E402
 from pipeline.offer import OfferTracker  # noqa: E402
 from pipeline.research import ResearchAgent  # noqa: E402
+from pipeline.safety import SecretGuard  # noqa: E402
 from pipeline.suggestions import SuggestionEngine  # noqa: E402
 from pipeline.tactics import PressureDetector, sentences  # noqa: E402
 from providers.catalog import Catalog  # noqa: E402
@@ -242,7 +245,7 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
     s = get_settings()
     market = RoutedMarketData(FixtureProvider(catalog), FinnhubProvider(s.finnhub_api_key) if live else None)
     bus = EventBus()
-    out = bus.subscribe(ClaimChecked, TacticFlagged, SuggestionsUpdated, RiskUpdated)
+    out = bus.subscribe(ClaimChecked, TacticFlagged, SuggestionsUpdated, RiskUpdated, SecretRequested, SecretSharing)
     tasks = [
         asyncio.create_task(c.run())
         for c in (
@@ -252,7 +255,8 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
             ResearchAgent(bus, market, FixtureRegister(catalog), catalog, None),
             PressureDetector(bus, classifier),
             IdentityWatcher(bus),
-            SuggestionEngine(bus, wait_for=("checks", "research", "tactics", "identity")),
+            SecretGuard(bus),
+            SuggestionEngine(bus, wait_for=("checks", "research", "tactics", "identity", "secrets")),
         )
     ]
     writer = MemoWriter(bus, None, None)  # template summary: deterministic in text mode
@@ -281,6 +285,8 @@ async def run_call_text(name: str, classifier: TacticClassifier | None, live: bo
         "flags": [e.flag for e in events if isinstance(e, TacticFlagged)],
         "max_visible": max((len(e.visible) for e in events if isinstance(e, SuggestionsUpdated)), default=0),
         "risk": risk,
+        "secrets": [e for e in events if isinstance(e, SecretRequested)],
+        "sharing": any(isinstance(e, SecretSharing) for e in events),
         "caller_text": caller_text,
         "memo": memo,
         "memo_s": memo_s,
@@ -297,6 +303,8 @@ def memo_ok(memo) -> bool:  # noqa: ANN001
         for i in s.items:
             if s.id == "pressure":
                 own.append(i.text)  # the detail is the caller's quote
+            elif s.id == "secrets":
+                own.append(i.text)  # the detail is the caller's request
             elif s.id == "claims" and i.text.startswith("“"):
                 own.append(i.detail)  # the text is the caller's quote
             else:
@@ -338,15 +346,27 @@ def call_level(classifier: TacticClassifier | None, live: bool) -> list[CallResu
             # Undefined is not zero: recall needs labeled tactics, precision needs flags.
             recall = r if any(truth) else None
             precision = p if any(pred) else None
+        # Requests for private details (M6): every scripted kind warned about, nothing extra
+        # at the "stop" level, and the interruption exactly when the script has an answer.
+        found = list(dict.fromkeys(e.kind for e in run["secrets"]))
+        stop = any(e.level == "stop" for e in run["secrets"])
+        want = exp.get("secrets")
+        secret_ok = None
+        if want is not None:
+            stop_kinds = {e.kind for e in run["secrets"] if e.level == "stop"}
+            secret_ok = set(want["requested"]) <= set(found) and stop_kinds <= set(want["requested"]) and run["sharing"] == want["sharing"]
         results.append(
             CallResult(
                 name=name, kind=kind, hard_honest=bool(exp.get("hard_honest")), expected=expected,
+                secrets_expected=list(want["requested"]) if want else [], secrets_found=found, secret_stop=stop,
+                secret_sharing=run["sharing"], secret_ok=secret_ok,
                 risk_score=score, risk_level=level, ok=ok, false_claims_expected=len(wanted), false_claims_caught=caught,
                 tactic_recall=recall, tactic_precision=precision, max_visible_suggestions=run["max_visible"],
                 memo_ok=memo_ok(run["memo"]), memo_s=round(run["memo_s"], 2),
             )  # fmt: skip
         )
-        print(f"  {name:<26} {kind:<12} risk {score:>3} {level:<8} expected {expected:<18} {'OK' if ok else 'MISS'}  false claims {caught}/{len(wanted)}")
+        secret = '' if secret_ok is None else f"  secrets {'OK' if secret_ok else 'MISS'} {','.join(found) or '-'}{' +stop' if run['sharing'] else ''}"
+        print(f"  {name:<26} {kind:<12} risk {score:>3} {level:<8} expected {expected:<18} {'OK' if ok else 'MISS'}  false claims {caught}/{len(wanted)}{secret}")
     return results
 
 
@@ -447,6 +467,10 @@ def main() -> None:
     fc_exp = sum(c.false_claims_expected for c in calls)
     fc_got = sum(c.false_claims_caught for c in calls)
     e2e = next((row for row in latency if row.stage == "claim.flag_e2e"), None)
+    with_secrets = [c for c in calls if c.secret_ok is not None]
+    honest_stop = sum(c.secret_stop for c in honest)
+    share_e2e = next((row for row in latency if row.stage == "secret.share_e2e"), None)
+    ask_e2e = next((row for row in latency if row.stage == "secret.request_e2e"), None)
     targets = [
         Target(label="Pressure-tactic precision (held-out lines)", target="≥ 0.80", measured=f"{tenor.micro.precision:.2f}", met=tenor.micro.precision >= 0.8),
         Target(label="Pressure-tactic recall (held-out lines)", target="≥ 0.80", measured=f"{tenor.micro.recall:.2f}", met=tenor.micro.recall >= 0.8),
@@ -454,6 +478,13 @@ def main() -> None:
         Target(label="Manipulative calls rated high or critical", target=f"{len(manip)} of {len(manip)}", measured=f"{sum(c.ok for c in manip)} of {len(manip)}", met=all(c.ok for c in manip)),
         Target(label="Scripted false claims caught", target="all", measured=f"{fc_got} of {fc_exp}", met=fc_got == fc_exp),
         Target(label="Claim spoken → verdict (median)", target="≤ 2 s", measured=f"{e2e.median_ms / 1000:.2f} s (n={e2e.n})" if e2e else "not measured (run with --audio)", met=(e2e.median_ms <= 2000) if e2e else None),
+        Target(
+            label="Requests for private details warned about (and code read out → “Stop”)", target=f"{len(with_secrets)} of {len(with_secrets)} calls",
+            measured=f"{sum(bool(c.secret_ok) for c in with_secrets)} of {len(with_secrets)} calls", met=all(c.secret_ok for c in with_secrets),
+        ),
+        Target(label="Honest calls with a “Don't read it out” warning", target=f"0 of {len(honest)}", measured=f"{honest_stop} of {len(honest)}", met=honest_stop == 0),
+        Target(label="Request → warning on screen (median)", target="≤ 1 s", measured=f"{ask_e2e.median_ms / 1000:.2f} s (n={ask_e2e.n})" if ask_e2e else "not measured (run with --audio)", met=(ask_e2e.median_ms <= 1000) if ask_e2e else None),
+        Target(label="2nd digit read out → “Stop” on screen (median)", target="≤ 2 s", measured=f"{share_e2e.median_ms / 1000:.2f} s (n={share_e2e.n})" if share_e2e else "not measured (run with --audio)", met=(share_e2e.median_ms <= 2000) if share_e2e else None),
         Target(label="Suggestions visible at once", target="≤ 4", measured=str(max(c.max_visible_suggestions for c in calls)), met=max(c.max_visible_suggestions for c in calls) <= 4),
         memo_target(calls, latency),
         Target(

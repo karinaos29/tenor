@@ -1,0 +1,13 @@
+{
+  "kind": "manipulative",
+  "hard_honest": false,
+  "note": "M6: a request for a one-time code, the start of an answer, then a password request. 'Six digit code' in the request is not an answer.",
+  "risk": {
+    "min_level": "critical"
+  },
+  "secrets": {
+    "requested": ["one_time_code", "password"],
+    "sharing": true
+  },
+  "false_claims": []
+}

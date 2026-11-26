@@ -43,7 +43,7 @@ All text tokens are ≥ 6.5:1 on every surface (checked 2026-10-20). Fonts are s
 - **Numbers** use `--font-mono` with `font-variant-numeric: tabular-nums`.
 - **Gradient only for brand moments:** the Tenor wordmark and the Start screen headline. Never on data, suggestions or severity.
 - **Motion only for news:** a new item fades/slides in once (≤250ms). No pulsing, bouncing or looping animation except the small live-recording dot. Respect `prefers-reduced-motion`.
-- **No pop-ups, modals or sounds during a call.** Escalation = risk pill turns critical + the related suggestion moves to first place.
+- **No pop-ups, modals or sounds during a call.** Escalation = risk pill turns critical + the related suggestion moves to first place. One exception: the safety banner (`SafetyBanner.tsx`), pinned under the call strip when someone asks for a code, PIN or password. It's silent, covers nothing, and can be hidden.
 - **Every result shows its source and check time** in muted small text.
 - **Empty states explain what will appear**, e.g. "Terms fill in as the caller states them."
 - **Accessible:** visible focus rings, contrast ≥ 4.5:1 for text, all controls keyboard-reachable, live regions (`aria-live="polite"`) for new suggestions.

@@ -1,8 +1,8 @@
 {
-  "run_id": "9719aac5",
-  "created_at": "2026-10-21T08:39:56.667721Z",
-  "commit": "24f13b1",
-  "note": "80 held-out lines; 12 test calls (5 manipulative, 7 honest); audio replays included; live Finnhub",
+  "run_id": "05b0309d",
+  "created_at": "2026-11-26T19:02:59.975658Z",
+  "commit": "c8a267f",
+  "note": "80 held-out lines; 15 test calls (7 manipulative, 8 honest); audio replays included; live Finnhub",
   "data": "Synthetic benchmark. Training lines were written by Claude Sonnet; the held-out test lines and 9 of the 12 test calls by Claude Haiku from a separate brief, without access to the training set; 3 calls by Claude Opus. All calls are scripted and voiced by text-to-speech, not real phone calls. One round of feedback: after the first run, 130 training lines were added for the two kinds of honest speech the classifier over-flagged (short small talk, same-topic opposites); test lines were not changed, and thresholds are set on training data only.",
   "targets": [
     {
@@ -19,14 +19,14 @@
     },
     {
       "label": "Honest calls rated high risk",
-      "target": "0 of 7",
-      "measured": "0 of 7",
+      "target": "0 of 8",
+      "measured": "0 of 8",
       "met": true
     },
     {
       "label": "Manipulative calls rated high or critical",
-      "target": "5 of 5",
-      "measured": "5 of 5",
+      "target": "7 of 7",
+      "measured": "7 of 7",
       "met": true
     },
     {
@@ -38,7 +38,31 @@
     {
       "label": "Claim spoken → verdict (median)",
       "target": "≤ 2 s",
-      "measured": "0.71 s (n=15)",
+      "measured": "0.72 s (n=12)",
+      "met": true
+    },
+    {
+      "label": "Requests for private details warned about (and code read out → “Stop”)",
+      "target": "2 of 2 calls",
+      "measured": "2 of 2 calls",
+      "met": true
+    },
+    {
+      "label": "Honest calls with a “Don't read it out” warning",
+      "target": "0 of 8",
+      "measured": "0 of 8",
+      "met": true
+    },
+    {
+      "label": "Request → warning on screen (median)",
+      "target": "≤ 1 s",
+      "measured": "0.62 s (n=3)",
+      "met": true
+    },
+    {
+      "label": "2nd digit read out → “Stop” on screen (median)",
+      "target": "≤ 2 s",
+      "measured": "0.52 s (n=1)",
       "met": true
     },
     {
@@ -50,13 +74,13 @@
     {
       "label": "Memo ready after hang-up",
       "target": "≤ 60 s",
-      "measured": "0.9 s median, p95 9.1 s (n=12, real calls)",
+      "measured": "1.0 s median, p95 8.2 s (n=14, real calls)",
       "met": true
     },
     {
       "label": "Memos with no buy / sell / safe / scam wording",
-      "target": "12 of 12",
-      "measured": "12 of 12 (+ 12 of 12 with Gemini summaries)",
+      "target": "15 of 15",
+      "measured": "15 of 15 (+ 14 of 14 with Gemini summaries)",
       "met": true
     }
   ],
@@ -145,7 +169,7 @@
         "f1": 0.657,
         "support": 45
       },
-      "latency_ms_median": 0.1,
+      "latency_ms_median": 0.06,
       "note": "High-precision patterns per tactic"
     },
     {
@@ -232,7 +256,7 @@
         "f1": 0.876,
         "support": 45
       },
-      "latency_ms_median": 9.0,
+      "latency_ms_median": 9.53,
       "note": "all-MiniLM-L6-v2 embeddings + logistic regression, local CPU"
     },
     {
@@ -319,7 +343,7 @@
         "f1": 0.901,
         "support": 45
       },
-      "latency_ms_median": 9.1,
+      "latency_ms_median": 9.59,
       "note": "What runs live during a call"
     },
     {
@@ -425,7 +449,12 @@
       "tactic_precision": 0.0,
       "max_visible_suggestions": 2,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "honest_cd_deadline",
@@ -441,7 +470,37 @@
       "tactic_precision": 0.0,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
+    },
+    {
+      "name": "honest_code_warning",
+      "kind": "honest",
+      "hard_honest": true,
+      "expected": "medium or below",
+      "risk_score": 21,
+      "risk_level": "low",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": null,
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0,
+      "secrets_expected": [
+        "identity"
+      ],
+      "secrets_found": [
+        "identity"
+      ],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": true
     },
     {
       "name": "honest_insurance_review",
@@ -457,23 +516,33 @@
       "tactic_precision": 0.0,
       "max_visible_suggestions": 2,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "honest_insured_savings",
       "kind": "honest",
       "hard_honest": true,
       "expected": "medium or below",
-      "risk_score": 21,
+      "risk_score": 6,
       "risk_level": "low",
       "ok": true,
       "false_claims_expected": 0,
       "false_claims_caught": 0,
       "tactic_recall": null,
       "tactic_precision": 0.0,
-      "max_visible_suggestions": 4,
+      "max_visible_suggestions": 3,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "honest_many_customers",
@@ -489,7 +558,12 @@
       "tactic_precision": 0.0,
       "max_visible_suggestions": 3,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "honest_pension_checkin",
@@ -505,7 +579,12 @@
       "tactic_precision": null,
       "max_visible_suggestions": 1,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "honest_voo",
@@ -521,14 +600,46 @@
       "tactic_precision": null,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
+    },
+    {
+      "name": "scam_code_request",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "critical or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": null,
+      "tactic_precision": null,
+      "max_visible_suggestions": 1,
+      "memo_ok": true,
+      "memo_s": 0.0,
+      "secrets_expected": [
+        "one_time_code",
+        "password"
+      ],
+      "secrets_found": [
+        "one_time_code",
+        "password"
+      ],
+      "secret_stop": true,
+      "secret_sharing": true,
+      "secret_ok": true
     },
     {
       "name": "scam_crypto_recovery",
       "kind": "manipulative",
       "hard_honest": false,
       "expected": "high or above",
-      "risk_score": 98,
+      "risk_score": 100,
       "risk_level": "critical",
       "ok": true,
       "false_claims_expected": 1,
@@ -537,7 +648,12 @@
       "tactic_precision": 0.667,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "scam_gold",
@@ -553,7 +669,12 @@
       "tactic_precision": 1.0,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "scam_kstl",
@@ -569,7 +690,33 @@
       "tactic_precision": null,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
+    },
+    {
+      "name": "scam_no_firm",
+      "kind": "manipulative",
+      "hard_honest": false,
+      "expected": "high or above",
+      "risk_score": 100,
+      "risk_level": "critical",
+      "ok": true,
+      "false_claims_expected": 0,
+      "false_claims_caught": 0,
+      "tactic_recall": 0.714,
+      "tactic_precision": 0.833,
+      "max_visible_suggestions": 4,
+      "memo_ok": true,
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "scam_pension_transfer",
@@ -585,7 +732,12 @@
       "tactic_precision": 0.75,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     },
     {
       "name": "scam_silverline",
@@ -601,99 +753,128 @@
       "tactic_precision": 0.714,
       "max_visible_suggestions": 4,
       "memo_ok": true,
-      "memo_s": 0.0
+      "memo_s": 0.0,
+      "secrets_expected": [],
+      "secrets_found": [],
+      "secret_stop": false,
+      "secret_sharing": false,
+      "secret_ok": null
     }
   ],
   "latency": [
     {
       "stage": "check.claim",
-      "n": 15,
+      "n": 12,
       "median_ms": 0.0,
-      "p95_ms": 0.3
+      "p95_ms": 0.1
     },
     {
       "stage": "claim.flag_e2e",
-      "n": 15,
-      "median_ms": 714.9,
-      "p95_ms": 2211.5
+      "n": 12,
+      "median_ms": 721.9,
+      "p95_ms": 2232.5
     },
     {
       "stage": "detector",
-      "n": 311,
-      "median_ms": 19.8,
-      "p95_ms": 37.0
+      "n": 325,
+      "median_ms": 21.8,
+      "p95_ms": 36.2
     },
     {
       "stage": "extractor.rules",
-      "n": 381,
+      "n": 395,
       "median_ms": 0.6,
-      "p95_ms": 1.2
+      "p95_ms": 1.0
+    },
+    {
+      "stage": "identity",
+      "n": 277,
+      "median_ms": 0.0,
+      "p95_ms": 0.0
     },
     {
       "stage": "labeler",
-      "n": 601,
+      "n": 607,
       "median_ms": 0.2,
-      "p95_ms": 0.5
+      "p95_ms": 0.7
     },
     {
       "stage": "llm.extract",
-      "n": 14,
-      "median_ms": 902.8,
-      "p95_ms": 1051.8
+      "n": 16,
+      "median_ms": 823.6,
+      "p95_ms": 1370.8
     },
     {
       "stage": "llm.memo",
-      "n": 12,
-      "median_ms": 856.3,
-      "p95_ms": 945.8
+      "n": 14,
+      "median_ms": 945.5,
+      "p95_ms": 4832.1
     },
     {
       "stage": "llm.wording",
       "n": 14,
-      "median_ms": 754.5,
-      "p95_ms": 893.1
+      "median_ms": 708.4,
+      "p95_ms": 1161.3
     },
     {
       "stage": "memo.write",
-      "n": 12,
-      "median_ms": 870.2,
-      "p95_ms": 9071.2
+      "n": 14,
+      "median_ms": 957.7,
+      "p95_ms": 8173.6
     },
     {
       "stage": "offer",
-      "n": 45,
+      "n": 42,
       "median_ms": 0.1,
-      "p95_ms": 0.3
+      "p95_ms": 0.2
     },
     {
       "stage": "research.prefetch",
-      "n": 20,
-      "median_ms": 0.1,
-      "p95_ms": 244.1
+      "n": 19,
+      "median_ms": 0.0,
+      "p95_ms": 1.9
     },
     {
       "stage": "research.wording",
       "n": 14,
-      "median_ms": 758.2,
-      "p95_ms": 896.3
+      "median_ms": 718.0,
+      "p95_ms": 1166.3
+    },
+    {
+      "stage": "secret.request_e2e",
+      "n": 3,
+      "median_ms": 617.4,
+      "p95_ms": 825.9
+    },
+    {
+      "stage": "secret.share_e2e",
+      "n": 1,
+      "median_ms": 516.9,
+      "p95_ms": 516.9
+    },
+    {
+      "stage": "secret_guard",
+      "n": 1870,
+      "median_ms": 0.1,
+      "p95_ms": 0.2
     },
     {
       "stage": "stt.connect",
-      "n": 12,
-      "median_ms": 603.5,
-      "p95_ms": 820.1
+      "n": 17,
+      "median_ms": 553.9,
+      "p95_ms": 594.6
     },
     {
       "stage": "stt.final_lag",
-      "n": 387,
-      "median_ms": 672.0,
-      "p95_ms": 1926.5
+      "n": 400,
+      "median_ms": 703.8,
+      "p95_ms": 1915.7
     },
     {
       "stage": "stt.partial_lag",
-      "n": 1079,
-      "median_ms": 251.6,
-      "p95_ms": 585.9
+      "n": 1107,
+      "median_ms": 280.8,
+      "p95_ms": 607.2
     }
   ],
   "audio": true

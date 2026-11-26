@@ -1,0 +1,15 @@
+# Honest call (HARD, M6). Fictional bank (Riverside Savings Bank). The caller warns about codes, mentions a login code
+# to type into the app, and checks Eszter's date of birth: a milder "check who's calling" warning, never "don't read it out".
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Good morning, is this Eszter? It's Tom Becker from Riverside Savings Bank, about your savings bond that matures next month.
+YOU: Oh yes, hello Tom.
+CALLER: Before we go on, a quick reminder. We will never ask you for a code, your PIN or your password on the phone. If anyone does, please hang up.
+YOU: That's good to know.
+CALLER: To confirm it's you, can you tell me your date of birth?
+YOU: It's the fourth of March, nineteen sixty-eight.
+CALLER: Thank you. Your bond has a fixed rate, and you can renew it or take the money out. There's no rush, the deadline is the end of next month.
+YOU: Could you send me the details in writing?
+CALLER: Of course. I'll post a letter today. If you'd like to renew online, you'll get a six digit code by text when you log in. Type it into the app yourself, and don't read it to anyone.
+YOU: All right, thank you.
+CALLER: You're welcome. Take your time, and call us on the number on your statement if you have questions.

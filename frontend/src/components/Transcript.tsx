@@ -7,6 +7,9 @@ import type { Claim, Utterance } from "../lib/events.gen";
 import { highlightSegments, offerPhrasesFor } from "../lib/highlight";
 import { useCallStore } from "../stores/call";
 
+// Without words, the secret guard can't hear a request for a code either.
+const NO_WARNINGS = "Tenor can't warn you about requests for codes until it's back.";
+
 function TranscriptStatus() {
   const { phase, transcriber, lostMessage } = useCallStore();
   let text: string | null = null;
@@ -17,10 +20,10 @@ function TranscriptStatus() {
   } else if (transcriber.state === "connecting" && phase !== "ended") {
     text = "Connecting to the speech service…";
   } else if (transcriber.state === "reconnecting") {
-    text = "Transcription paused. Reconnecting…";
+    text = `Transcription paused. Reconnecting… ${NO_WARNINGS}`;
     tone = "warn";
   } else if (transcriber.state === "unavailable") {
-    text = "Transcription is off: couldn't reach the speech service." + (transcriber.detail === "no_key" ? " The speech-to-text key is missing." : "");
+    text = "Transcription is off: couldn't reach the speech service." + (transcriber.detail === "no_key" ? " The speech-to-text key is missing." : "") + ` ${NO_WARNINGS}`;
     tone = "warn";
   }
   return (

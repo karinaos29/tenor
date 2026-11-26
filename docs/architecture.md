@@ -31,6 +31,7 @@ One Python module per job, each tested and timed on its own.
 | Research agent | Firm register, real price history, news; prefetched on first mention | Data first; Gemini rewords under a number guard | `pipeline/research.py` |
 | Pressure detector | 8 tactics per caller sentence | MiniLM embeddings + logistic regression, plus rules | `pipeline/tactics.py`, `detector/` |
 | Identity watcher | A pitching caller who doesn't say, or won't say, their firm | Rules on the transcript and the offer's firm | `pipeline/identity.py` |
+| Secret guard | A request for a code, PIN, password, card details or computer access, and the start of an answer | Rules on both voices' words, interim included; counts code characters after a request; keeps no secret | `pipeline/safety.py`, `detector/secrets.py` |
 | Suggestion engine | "Say this" lines + evidence (≤ 4) and the risk score | Scored rules; risk = capped sum of listed reasons | `pipeline/suggestions.py` |
 | Memo writer | The decision memo after hang-up | Built from facts; Gemini words only the summary, under guards; SQLite; email via Resend | `memo/` |
 
@@ -42,7 +43,7 @@ Every event is a Pydantic model with a timestamp (`pipeline/events.py`). The Typ
 | Event | From | To |
 |---|---|---|
 | `transcript.segment` / `transcript.closed` | Transcriber | Speaker labeler |
-| `utterance.partial` / `.progress` / `.final`, `speakers.updated` | Speaker labeler | Extractor, pressure detector, identity watcher, checker, panel |
+| `utterance.partial` / `.progress` / `.final`, `speakers.updated` | Speaker labeler | Extractor, pressure detector, identity watcher, secret guard, checker, panel |
 | `entity.detected` | Extractor | Offer tracker, research agent |
 | `claim.extracted` | Extractor | Claim checker |
 | `offer.updated` / `offer.changed` | Offer tracker | Checker (price), identity watcher, suggestion engine, panel |
@@ -50,19 +51,20 @@ Every event is a Pydantic model with a timestamp (`pipeline/events.py`). The Typ
 | `research.ready` | Research agent | Suggestion engine, panel |
 | `tactic.flagged` | Pressure detector | Identity watcher, suggestion engine, panel |
 | `identity.gap` / `identity.resolved` | Identity watcher | Suggestion engine |
+| `secret.requested` / `secret.sharing` | Secret guard | Suggestion engine, memo writer, panel (banner) |
 | `suggestions.updated` / `risk.updated` | Suggestion engine | Panel |
 | `call.ended` → `memo.ready` | Session → memo writer | Memo screen (polls REST) |
 
 `utterance.progress` carries finished sentences of a turn that's still going, so a claim is checked before the caller stops talking.
 
-**End of call.** Each stage closes in order, so nothing that's still running is lost: `transcript.closed` → `utterances.closed` → `entities.closed` → `offer.closed` → `checks.closed` / `research.closed` / `tactics.closed` → `call.ended`. The memo is then written in the background, so hanging up never waits for an LLM.
+**End of call.** Each stage closes in order, so nothing that's still running is lost: `transcript.closed` → `utterances.closed` → `entities.closed` → `offer.closed` → `checks.closed` / `research.closed` / `tactics.closed` / `secrets.closed` → `call.ended`. The memo is then written in the background, so hanging up never waits for an LLM.
 
 ## When things fail
 Every external call has a timeout and a visible fallback.
 
 | Failure | Fallback |
 |---|---|
-| Deepgram drops or stalls | 3 reconnects with backoff; "Transcription paused" in the UI |
+| Deepgram drops or stalls | 3 reconnects with backoff; "Transcription paused" in the UI, which says code warnings are paused too |
 | Gemini slow or down | Requests hedged across 2–3 models; a client-side budget; the rules or template result stays |
 | No market data | "Couldn't verify", with the source named |
 | Diarization mixes up speakers | Voice print from the mic check; else bass and loudness, merged-voice split; "Swap speakers" button |
@@ -73,7 +75,7 @@ Every external call has a timeout and a visible fallback.
 | Screen | What it shows |
 |---|---|
 | Start | Consent, mic check, service status, "Start listening" or "Replay a test call" |
-| Live | Call strip with risk, transcript, suggestions, offer, claims, pressure tactics |
+| Live | Call strip with risk, a pinned warning when someone asks for a private detail, transcript, suggestions, offer, claims, pressure tactics |
 | Memo | The decision memo; each item links to its moment in the transcript; email and print |
 | Evaluation | For reviewers: targets, detector vs. Gemini, per-call results |
 

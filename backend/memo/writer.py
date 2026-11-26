@@ -6,7 +6,7 @@ every number must come from the facts, and no buy / sell / safe / scam. Otherwis
 template summary stays. The memo is saved to SQLite; `call.ended` never waits for it.
 
 Consumes: CallStarted, UtteranceFinal, SpeakersUpdated, OfferUpdated, ClaimChecked,
-ResearchReady, TacticFlagged, SuggestionsUpdated, RiskUpdated, CallEnded.
+ResearchReady, TacticFlagged, SecretRequested, SecretSharing, SuggestionsUpdated, RiskUpdated, CallEnded.
 Publishes: MemoReady (best effort; the browser polls GET /api/calls/{id}/memo).
 """
 
@@ -27,6 +27,8 @@ from pipeline.events import (
     OfferUpdated,
     ResearchReady,
     RiskUpdated,
+    SecretRequested,
+    SecretSharing,
     SpeakersUpdated,
     SuggestionsUpdated,
     TacticFlagged,
@@ -71,7 +73,7 @@ class MemoWriter:
         self.memo: Memo | None = None
         self._sub = bus.subscribe(
             CallStarted, UtteranceFinal, SpeakersUpdated, OfferUpdated, ClaimChecked, ResearchReady,
-            TacticFlagged, SuggestionsUpdated, RiskUpdated, CallEnded,
+            TacticFlagged, SecretRequested, SecretSharing, SuggestionsUpdated, RiskUpdated, CallEnded,
         )  # fmt: skip
 
     async def run(self) -> Memo | None:
@@ -92,6 +94,10 @@ class MemoWriter:
                 r.research[event.item.id] = event.item
             elif isinstance(event, TacticFlagged):
                 r.flags.append(event.flag)
+            elif isinstance(event, SecretRequested):
+                r.secrets.append(event)
+            elif isinstance(event, SecretSharing):
+                r.sharing.append(event)
             elif isinstance(event, SuggestionsUpdated):
                 for s in [*event.visible, *event.earlier]:
                     if s.kind == "say_this":

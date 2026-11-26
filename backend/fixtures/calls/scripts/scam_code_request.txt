@@ -1,0 +1,16 @@
+# Manipulative call (M6). Fictional firm (Ashcombe Wealth, not in the register). All names are invented.
+# A "security team" asks for the one-time code just texted to Eszter, and she starts reading it out; then the caller asks for her password.
+# Format: one turn per line, "CALLER:" or "YOU:". Lines starting with # are ignored.
+YOU: Hello?
+CALLER: Hello, is this Eszter? This is Mark from the security team at Ashcombe Wealth, where your investment account is held.
+YOU: Ashcombe? I'm not sure I have an account there.
+CALLER: Someone is trying to withdraw twelve thousand dollars from your account right now. We need to stop it in the next few minutes.
+YOU: Oh dear. What should I do?
+CALLER: We've just sent a six digit code to your phone. Can you read it to me so I can block the withdrawal?
+YOU: Let me look. It says four, seven, two, nine.
+CALLER: Good, and the last two numbers?
+YOU: Wait. Why do you need my code?
+CALLER: It's only to cancel the transfer. Please don't hang up, and don't call your bank, they'll only slow things down.
+YOU: I'd rather call my bank myself.
+CALLER: Then I'll also need your online banking password, so we can move your savings to a protected account today.
+YOU: No. I'm going to hang up now.

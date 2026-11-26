@@ -1,0 +1,13 @@
+{
+  "kind": "honest",
+  "hard_honest": true,
+  "note": "M6: warns that the bank never asks for codes, mentions a login code to type into the app, and checks the date of birth. Only the milder 'check who's calling' warning is expected.",
+  "risk": {
+    "max_level": "medium"
+  },
+  "secrets": {
+    "requested": ["identity"],
+    "sharing": false
+  },
+  "false_claims": []
+}

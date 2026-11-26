@@ -13,6 +13,7 @@ Built for Eszter, 58, a retired teacher with savings: plain words, calm by defau
 - **The offer card** fills in as the caller talks (who, what, price, quantity, total, deadline) and marks changes ("10,000 shares, was 5,000").
 - **Claims vs. data.** "Up 40% this quarter" is checked against market data within 0.71 s of being said. Verdicts come from arithmetic, never from an LLM.
 - **Pressure tactics** like rushing you, secrecy, or "no risk" promises are flagged per sentence by a local classifier plus rules.
+- **Private details.** If someone asks for a one-time code, PIN, password, card details or access to the computer, a warning pins under the call strip: "Don't read it out." If an answer starts anyway, it switches to "Stop. Don't say any more." within about half a second of the second digit. Tenor keeps no digits.
 - **Up to 4 suggestions** of what to say back, and a **risk level** that lists its reasons.
 - **A decision memo** about a second after hang-up, each item linked to its moment in the call. It can be emailed.
 - **"How Tenor is measured"**, an evaluation screen for reviewers.
@@ -49,12 +50,16 @@ From the latest evaluation run (`eval/results/latest.json`, also shown in the ap
 | Target | Goal | Measured |
 |---|---|---|
 | Pressure-tactic precision / recall (80 held-out lines) | ≥ 0.80 / ≥ 0.80 | **0.84 / 0.85** |
-| Honest calls rated high risk | 0 of 7 | **0 of 7** |
-| Manipulative calls rated high or critical | 5 of 5 | **5 of 5** |
+| Honest calls rated high risk | 0 of 8 | **0 of 8** |
+| Manipulative calls rated high or critical | 7 of 7 | **7 of 7** |
 | Scripted false claims caught | all | **7 of 7** |
-| Claim spoken → verdict (median, real audio) | ≤ 2 s | **0.71 s** |
-| Memo ready after hang-up | ≤ 60 s | **0.9 s** median, p95 9.1 s |
-| Memos with no buy / sell / safe / scam wording | all | **12 of 12** |
+| Claim spoken → verdict (median, real audio) | ≤ 2 s | **0.72 s** |
+| Requests for private details warned about, and a code read out → "Stop" | 2 of 2 calls | **2 of 2** |
+| Honest calls with a "Don't read it out" warning | 0 of 8 | **0 of 8** |
+| Request → warning on screen (median, real audio) | ≤ 1 s | **0.62 s** |
+| 2nd digit read out → "Stop" on screen (real audio) | ≤ 2 s | **0.52 s** (1 call) |
+| Memo ready after hang-up | ≤ 60 s | **1.0 s** median, p95 8.2 s |
+| Memos with no buy / sell / safe / scam wording | all | **15 of 15** |
 | Suggestions visible at once | ≤ 4 | 4 |
 
 This is a **synthetic benchmark**. Two different AI models wrote the training and test lines, and the calls are voiced by text-to-speech, so these aren't real-world numbers. Gemini zero-shot labels tactics *more accurately* (F1 0.92 vs. 0.84), but it is ~75× slower and rate-limited, so the local classifier runs live.
@@ -70,8 +75,9 @@ This is a **synthetic benchmark**. Two different AI models wrote the training an
 - **Real audio beats text tests.** Replays found merged voices, misheard names, "025%" for 0.25%, and a claim checked against the wrong company. Live speakerphone tests showed one microphone can't tell two people apart by loudness or bass, so live calls now recognize the user's voice from a short voice check.
 
 ## Limitations
-- Synthetic benchmark; 12 scripted calls. The firm register is a **test register of fictional firms**, so real firms show "Couldn't verify".
+- Synthetic benchmark; 15 scripted calls. The firm register is a **test register of fictional firms**, so real firms show "Couldn't verify".
 - Tactic recall within full calls is lower than on single lines (0.40–0.50 on two scam calls); their risk still reaches critical.
+- The private-details warning is rules only, so unusual wording can slip past it, and a caller reading digits back after a request also triggers "Stop". It needs the transcript, so it's paused while transcription is.
 - Telling the two voices apart on one speakerphone is the weakest link. Live calls use a voice check; the voice-print matching is measured on synthetic (text-to-speech) voices, and real speakerphone calls are checked by hand.
 
 ## Docs
@@ -95,7 +101,7 @@ From `frontend/`:
 npm run test && npm run typecheck
 ```
 
-Retrain the tactic classifier and rerun the full evaluation (12 calls replayed in real time), from `backend/`:
+Retrain the tactic classifier and rerun the full evaluation (15 calls replayed in real time), from `backend/`:
 
 ```bash
 uv run python ../eval/train_detector.py

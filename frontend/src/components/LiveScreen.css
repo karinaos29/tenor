@@ -126,3 +126,30 @@ button.pill:hover { background: var(--sunk); }
 .riskpop__list { list-style: none; margin: 0; padding: 0; }
 .riskpop__list li { padding: 5px 0; font-size: 15px; }
 @keyframes riskpop-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Safety banner: pinned under the call strip when someone asks for a private detail.
+   The one exception to "escalation = risk pill + first suggestion" (docs/decisions.md):
+   silent, no overlay, and it covers nothing. */
+.safety {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 12px 20px;
+  padding: 14px 20px; border-radius: var(--radius-card); border: 2px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+}
+.safety--warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
+.safety p { margin: 0; }
+.safety__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.safety__tag {
+  font-size: 13px; font-weight: 700; border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; color: var(--danger);
+}
+.safety--warn .safety__tag { color: var(--warn); }
+.safety__title { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--ink); }
+.safety__body { font-size: 16px; margin-top: 4px !important; color: var(--ink); }
+.safety__say { border-left: 1px solid var(--line); padding-left: 20px; }
+.safety__hide { align-self: start; }
+/* Keep the call strip and risk pill on screen: the transcript gives up the banner's height. */
+.live:has(.safety) .transcript { height: calc(100vh - 264px); }
+
+@media (max-width: 899px) {
+  .safety { grid-template-columns: 1fr auto; }
+  .safety__say { grid-column: 1 / -1; grid-row: 2; border-left: 0; padding-left: 0; }
+}

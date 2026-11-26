@@ -17,6 +17,8 @@ from pipeline.events import (
     Offer,
     ResearchItem,
     RiskUpdated,
+    SecretRequested,
+    SecretSharing,
     Suggestion,
     TacticFlag,
     Utterance,
@@ -59,6 +61,8 @@ class CallRecord:
     flags: list[TacticFlag] = field(default_factory=list)
     say_this: dict[str, Suggestion] = field(default_factory=dict)
     risk: RiskUpdated | None = None
+    secrets: list[SecretRequested] = field(default_factory=list)
+    sharing: list[SecretSharing] = field(default_factory=list)
 
     def role(self, u: Utterance) -> str:
         if self.user_indices is None:
@@ -102,6 +106,18 @@ def sections(r: CallRecord) -> list[MemoSection]:
         for reason in r.risk.reasons[:4]:
             glance.append(MemoItem(text=reason.label, detail=f"+{reason.points}"))
     out.append(MemoSection(id="glance", title="At a glance", items=glance, empty="Not enough was checked to give a risk level."))
+
+    asked: list[MemoItem] = []
+    for e in r.secrets:
+        tone = "danger" if e.level == "stop" else "warn"
+        asked.append(MemoItem(text=f"The caller asked for your {e.label}", detail=f"“{e.quote}”", t=r.t_of(e.utterance_id) or e.t, source="From the call", tone=tone))  # type: ignore[arg-type]
+    for e in r.sharing:
+        asked.append(MemoItem(
+            text=f"Tenor heard the start of your {e.label} being read out", detail="Tenor didn't keep what was said.",
+            t=r.t_of(e.utterance_id) or e.t, source="From the call", tone="danger",
+        ))  # fmt: skip
+    if asked:
+        out.append(MemoSection(id="secrets", title="Requests for private details", items=asked, empty=""))
 
     who: list[MemoItem] = []
     o = r.offer
@@ -164,6 +180,10 @@ def sections(r: CallRecord) -> list[MemoSection]:
         MemoItem(text="Look the firm up on your financial regulator's website before going further."),
         MemoItem(text="Talk it over with someone you trust: family, a friend, or your bank."),
     ]
+    if any(e.level == "stop" for e in r.secrets):
+        steps.insert(0, MemoItem(text="No real bank or firm needs a code, PIN or password read out on a call. Don't give one, even if they call again.", tone="danger"))
+    if r.sharing:
+        steps.insert(0, MemoItem(text="If you read out a code, PIN or card details, call your bank now on the number on the back of your card.", tone="danger"))
     if o and o.payment and o.payment.display in {"Bank transfer", "Wire transfer", "Crypto", "Gift cards"}:
         steps.insert(1, MemoItem(text=f"Money sent by {o.payment.display.lower()} is hard to get back. Ask for written terms first.", tone="warn"))
     out.append(MemoSection(id="steps", title="Steps that can help", items=steps))
@@ -180,6 +200,9 @@ def template_summary(r: CallRecord) -> str:
     strong = sorted({BY_ID[f.tactic].label.lower() for f in r.flags if f.severity == "strong"})
     if strong:
         parts.append("Tenor noticed pressure: " + ", ".join(strong) + ".")
+    asked = list(dict.fromkeys(e.label for e in r.secrets))
+    if asked:
+        parts.append("The caller asked for your " + " and ".join(asked) + ".")
     if r.risk is not None:
         parts.append(f"Overall risk: {r.risk.level}.")
     return " ".join(parts)

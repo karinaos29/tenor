@@ -539,6 +539,41 @@ class IdentityClosed(Event):
     type: Literal["identity.closed"] = "identity.closed"
 
 
+# --- Requests for private details (M6) ----------------------------------------------
+
+SecretKind = Literal["one_time_code", "pin", "password", "card", "recovery_phrase", "remote_access", "account_number", "identity"]
+SecretLevel = Literal["stop", "check"]
+
+
+class SecretRequested(Event):
+    """Someone on the call asked for a private detail (pipeline/safety.py). Carries what kind
+    of detail was asked for, never the detail itself. `t` is seconds from call start."""
+
+    type: Literal["secret.requested"] = "secret.requested"
+    kind: SecretKind
+    level: SecretLevel = Field(description="stop: never read it out; check: find out who's calling first")
+    label: str = Field(description="Plain words for the detail, e.g. 'one-time code'")
+    quote: str = Field(description="The request, with any digits masked")
+    utterance_id: str
+    t: float
+
+
+class SecretSharing(Event):
+    """After a 'stop' request, the start of a code was heard being read out. No digits are kept."""
+
+    type: Literal["secret.sharing"] = "secret.sharing"
+    kind: SecretKind
+    label: str
+    utterance_id: str
+    t: float
+
+
+class SecretsClosed(Event):
+    """The secret guard has finished (end-of-call chain)."""
+
+    type: Literal["secrets.closed"] = "secrets.closed"
+
+
 # --- Unions -------------------------------------------------------------------------
 
 # Everything that crosses a WebSocket. TypeScript types are generated from this.
@@ -561,7 +596,9 @@ TenorEvent = Annotated[
     | ResearchReady
     | SuggestionsUpdated
     | RiskUpdated
-    | TacticFlagged,
+    | TacticFlagged
+    | SecretRequested
+    | SecretSharing,
     Field(discriminator="type"),
 ]
 
@@ -627,6 +664,11 @@ class CallResult(BaseModel):
     max_visible_suggestions: int
     memo_ok: bool | None = Field(default=None, description="Memo written, with no buy/sell/safe/scam wording")
     memo_s: float | None = Field(default=None, description="Hang-up to memo ready, seconds")
+    secrets_expected: list[str] = Field(default_factory=list, description="Requests for private details in the script (M6)")
+    secrets_found: list[str] = Field(default_factory=list, description="Requests the secret guard warned about")
+    secret_stop: bool = Field(default=False, description="A 'Don't read it out' warning was shown")
+    secret_sharing: bool = Field(default=False, description="The 'Stop' interruption was shown")
+    secret_ok: bool | None = Field(default=None, description="Warnings match the script; null when it lists none")
 
 
 class StageLatency(BaseModel):

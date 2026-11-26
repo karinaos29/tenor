@@ -19,7 +19,9 @@ export type TenorEvent =
   | ResearchReady
   | SuggestionsUpdated
   | RiskUpdated
-  | TacticFlagged;
+  | TacticFlagged
+  | SecretRequested
+  | SecretSharing;
 
 /**
  * Every type that crosses the wire. Generated root; import the member types.
@@ -336,6 +338,42 @@ export interface TacticFlag {
   score: number;
   source: "classifier" | "rule" | "both";
 }
+/**
+ * Someone on the call asked for a private detail (pipeline/safety.py). Carries what kind
+ * of detail was asked for, never the detail itself. `t` is seconds from call start.
+ */
+export interface SecretRequested {
+  ts: string;
+  type: "secret.requested";
+  kind:
+    "one_time_code" | "pin" | "password" | "card" | "recovery_phrase" | "remote_access" | "account_number" | "identity";
+  /**
+   * stop: never read it out; check: find out who's calling first
+   */
+  level: "stop" | "check";
+  /**
+   * Plain words for the detail, e.g. 'one-time code'
+   */
+  label: string;
+  /**
+   * The request, with any digits masked
+   */
+  quote: string;
+  utterance_id: string;
+  t: number;
+}
+/**
+ * After a 'stop' request, the start of a code was heard being read out. No digits are kept.
+ */
+export interface SecretSharing {
+  ts: string;
+  type: "secret.sharing";
+  kind:
+    "one_time_code" | "pin" | "password" | "card" | "recovery_phrase" | "remote_access" | "account_number" | "identity";
+  label: string;
+  utterance_id: string;
+  t: number;
+}
 export interface ReplayList {
   replays: ReplayInfo[];
 }
@@ -408,6 +446,26 @@ export interface CallResult {
    * Hang-up to memo ready, seconds
    */
   memo_s: number | null;
+  /**
+   * Requests for private details in the script (M6)
+   */
+  secrets_expected: string[];
+  /**
+   * Requests the secret guard warned about
+   */
+  secrets_found: string[];
+  /**
+   * A 'Don't read it out' warning was shown
+   */
+  secret_stop: boolean;
+  /**
+   * The 'Stop' interruption was shown
+   */
+  secret_sharing: boolean;
+  /**
+   * Warnings match the script; null when it lists none
+   */
+  secret_ok: boolean | null;
 }
 export interface StageLatency {
   stage: string;

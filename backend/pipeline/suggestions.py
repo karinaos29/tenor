@@ -11,9 +11,13 @@ firm, dodged the question, or named an unregistered firm, each distinct tactic a
 `UNIDENTIFIED_POINTS` under its own listed reason (classifier flags alone back each other
 up poorly: honest eval calls collect several distinct ones too; see docs/decisions.md).
 
+A request for a code, PIN, password, card details, a recovery phrase or control of the
+computer is critical on its own (`SECRET_POINTS`): no honest caller needs one read out.
+Its "say this" line outranks everything else (pipeline/safety.py).
+
 Consumes: ClaimChecked, ResearchReady, OfferUpdated, OfferChanged, TacticFlagged,
-IdentityGap, IdentityResolved, and the ChecksClosed / ResearchClosed / TacticsClosed /
-IdentityClosed end markers.
+IdentityGap, IdentityResolved, SecretRequested, SecretSharing, and the ChecksClosed /
+ResearchClosed / TacticsClosed / IdentityClosed / SecretsClosed end markers.
 Publishes: SuggestionsUpdated, RiskUpdated.
 """
 
@@ -35,6 +39,9 @@ from pipeline.events import (
     ResearchItem,
     ResearchReady,
     RiskLevel,
+    SecretRequested,
+    SecretsClosed,
+    SecretSharing,
     RiskReason,
     RiskUpdated,
     Suggestion,
@@ -66,6 +73,16 @@ UNIDENTIFIED_WHO = {
     "evaded": "from a caller who wouldn't say their firm",
     "unregistered": "from a firm that isn't registered",
 }
+
+# A request for a private detail (pipeline/safety.py). "stop" alone makes the call critical.
+SECRET_POINTS = {"stop": 75, "check": 15}
+SECRET_PRIORITY = 110  # above every other line: this is the moment money can be lost
+SECRET_SAY = {
+    "stop": "I don't give that out on the phone. Goodbye.",
+    "remote_access": "I don't let anyone onto my computer. Goodbye.",
+    "check": "I'll call you back on a number I look up myself.",
+}
+SHARING_SAY = "Sorry, I won't read that out. I'm hanging up now."
 
 PERIOD_PHRASE = {
     "last 13 weeks": "Over the last three months",
@@ -103,7 +120,7 @@ class SuggestionEngine:
         self.tick_s = tick_s
         self._sub = bus.subscribe(
             ChecksClosed, ClaimChecked, IdentityClosed, IdentityGap, IdentityResolved, OfferChanged, OfferUpdated,
-            ResearchClosed, ResearchReady, TacticFlagged, TacticsClosed,
+            ResearchClosed, ResearchReady, TacticFlagged, TacticsClosed, SecretRequested, SecretSharing, SecretsClosed,
         )  # fmt: skip
         self._items: dict[str, Suggestion] = {}
         self._expired: dict[str, Suggestion] = {}
@@ -113,7 +130,7 @@ class SuggestionEngine:
         self._tactics: set[str] = set()  # distinct tactics flagged so far
         self._payment: str | None = None
         self._closed: set[str] = set()
-        self._wait_for = set(wait_for)  # end markers to wait for; the session adds "tactics" and "identity"
+        self._wait_for = set(wait_for)  # end markers to wait for; the session adds "tactics", "identity" and "secrets"
         self._last: tuple | None = None
         self._last_risk: tuple | None = None
         # Risk is shown only once something has been checked, so "Low" never means "nothing looked at yet".
@@ -155,6 +172,13 @@ class SuggestionEngine:
                 self._on_identity_resolved()
             elif isinstance(event, IdentityClosed):
                 self._closed.add("identity")
+            elif isinstance(event, SecretRequested):
+                self._assessed = True
+                self._on_secret(event)
+            elif isinstance(event, SecretSharing):
+                self._on_sharing(event)
+            elif isinstance(event, SecretsClosed):
+                self._closed.add("secrets")
             self._expire()
         self._publish(force=True)
         self._sub.close()
@@ -259,6 +283,19 @@ class SuggestionEngine:
         self._reasons.pop("identity", None)
         self._items.pop("say-identity", None)
         self._unidentified()
+
+    def _on_secret(self, e: SecretRequested) -> None:
+        reason = f"The caller said: “{e.quote}”"
+        if e.level == "stop":
+            text = SECRET_SAY["remote_access" if e.kind == "remote_access" else "stop"]
+            self._say("say-secret", f"The caller asked for your {e.label}", text, SECRET_PRIORITY, reason)
+        else:
+            self._say(f"say-secret-{e.kind}", f"The caller asked for your {e.label}", SECRET_SAY["check"], 92, reason)
+        self._risk(f"secret-{e.kind}", f"The caller asked for your {e.label}", SECRET_POINTS[e.level])
+
+    def _on_sharing(self, e: SecretSharing) -> None:
+        reason = "Already said it? Call your bank on the number on your card."
+        self._say("say-secret", "Stop before you say more", SHARING_SAY, SECRET_PRIORITY, reason)
 
     def _unidentified(self) -> None:
         """Pressure backed by a fact: each distinct tactic from a caller Tenor couldn't identify."""

@@ -805,6 +805,113 @@
       "title": "RiskUpdated",
       "type": "object"
     },
+    "SecretRequested": {
+      "description": "Someone on the call asked for a private detail (pipeline/safety.py). Carries what kind\nof detail was asked for, never the detail itself. `t` is seconds from call start.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "secret.requested",
+          "default": "secret.requested",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "one_time_code",
+            "pin",
+            "password",
+            "card",
+            "recovery_phrase",
+            "remote_access",
+            "account_number",
+            "identity"
+          ],
+          "type": "string"
+        },
+        "level": {
+          "description": "stop: never read it out; check: find out who's calling first",
+          "enum": [
+            "stop",
+            "check"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "description": "Plain words for the detail, e.g. 'one-time code'",
+          "type": "string"
+        },
+        "quote": {
+          "description": "The request, with any digits masked",
+          "type": "string"
+        },
+        "utterance_id": {
+          "type": "string"
+        },
+        "t": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "kind",
+        "level",
+        "label",
+        "quote",
+        "utterance_id",
+        "t"
+      ],
+      "title": "SecretRequested",
+      "type": "object"
+    },
+    "SecretSharing": {
+      "description": "After a 'stop' request, the start of a code was heard being read out. No digits are kept.",
+      "properties": {
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "secret.sharing",
+          "default": "secret.sharing",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "one_time_code",
+            "pin",
+            "password",
+            "card",
+            "recovery_phrase",
+            "remote_access",
+            "account_number",
+            "identity"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "utterance_id": {
+          "type": "string"
+        },
+        "t": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ts",
+        "type",
+        "kind",
+        "label",
+        "utterance_id",
+        "t"
+      ],
+      "title": "SecretSharing",
+      "type": "object"
+    },
     "ServiceStatus": {
       "description": "Whether each external service has a key configured. Never carries the key.",
       "properties": {
@@ -1332,6 +1439,8 @@
           "offer.updated": "#/$defs/OfferUpdated",
           "research.ready": "#/$defs/ResearchReady",
           "risk.updated": "#/$defs/RiskUpdated",
+          "secret.requested": "#/$defs/SecretRequested",
+          "secret.sharing": "#/$defs/SecretSharing",
           "speakers.swap": "#/$defs/SpeakersSwap",
           "speakers.updated": "#/$defs/SpeakersUpdated",
           "suggestions.updated": "#/$defs/SuggestionsUpdated",
@@ -1399,6 +1508,12 @@
         },
         {
           "$ref": "#/$defs/TacticFlagged"
+        },
+        {
+          "$ref": "#/$defs/SecretRequested"
+        },
+        {
+          "$ref": "#/$defs/SecretSharing"
         }
       ],
       "title": "TenorEvent"
@@ -1518,6 +1633,42 @@
           ],
           "default": null,
           "description": "Hang-up to memo ready, seconds"
+        },
+        "secrets_expected": {
+          "description": "Requests for private details in the script (M6)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "secrets_found": {
+          "description": "Requests the secret guard warned about",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "secret_stop": {
+          "default": false,
+          "description": "A 'Don't read it out' warning was shown",
+          "type": "boolean"
+        },
+        "secret_sharing": {
+          "default": false,
+          "description": "The 'Stop' interruption was shown",
+          "type": "boolean"
+        },
+        "secret_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Warnings match the script; null when it lists none"
         }
       },
       "required": [
@@ -1534,7 +1685,12 @@
         "tactic_precision",
         "max_visible_suggestions",
         "memo_ok",
-        "memo_s"
+        "memo_s",
+        "secrets_expected",
+        "secrets_found",
+        "secret_stop",
+        "secret_sharing",
+        "secret_ok"
       ],
       "title": "CallResult",
       "type": "object"
